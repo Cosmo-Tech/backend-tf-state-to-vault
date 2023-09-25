@@ -209,7 +209,7 @@ class ExtractConfig():
 
     def write_powerbi(self):
         powerbi = {
-            "api_scope": "https://analysis.windows.net/powerbi/api/.default",
+            "scope": "https://analysis.windows.net/powerbi/api/.default",
             "dashboard_view": "",
             "group_id": "",
             "scenario_view": "",
