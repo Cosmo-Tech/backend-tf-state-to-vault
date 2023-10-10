@@ -37,6 +37,51 @@ docker run -it \
 
 * Or, if you have a local tfstate json file 
 
+```json
+{
+    "outputs": {
+        "acr_login_server": {
+            "value": ""
+        },
+        "adx_uri": {
+            "value": ""
+        },
+        "cosmos_api_url": {
+            "value": ""
+        },
+        "resource_group_name": {
+            "value": ""
+        },
+        "resource_location": {
+            "value": ""
+        },
+        "storage_account_name": {
+            "value": ""
+        },
+        "storage_account_secret": {
+            "value": ""
+        },
+        "babylon_client_id": {
+            "value": ""
+        },
+        "babylon_principal_id": {
+            "value": ""
+        },
+        "babylon_client_secret": {
+            "value": ""
+        },
+        "platform_sp_client_id": {
+            "value": ""
+        },
+        "platform_sp_object_id": {
+            "value": ""
+        },
+        "subscription_id": {
+            "value": ""
+        }
+    }
+}
+```
 
 ```bash
 docker run -it \
