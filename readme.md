@@ -21,6 +21,7 @@ export TFSTATE_BLOB_NAME=
 export PLATFORM_NAME=
 ```
 
+Option 1. script terraform.
 
 ```bash
 docker run -it \
@@ -35,7 +36,9 @@ docker run -it \
  -e PLATFORM_NAME="$PLATFORM_NAME" upload
 ```
 
-* Or, if you have a local tfstate json file 
+Option 2. script local
+
+* If you have a local tfstate json file 
 
 ```json
 {
@@ -44,6 +47,9 @@ docker run -it \
             "value": ""
         },
         "adx_uri": {
+            "value": ""
+        },
+        "cluster_principal_id": {
             "value": ""
         },
         "cosmos_api_url": {
@@ -96,3 +102,5 @@ docker run -it \
  -e PLATFORM_NAME="$PLATFORM_NAME" \
  -v ./path/state.json:/usr/src/babyapp/state.json upload
 ```
+
+
