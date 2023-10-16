@@ -1,8 +1,9 @@
-name: Create and publish a Docker image
+name: Create and publish
 
 on:
-  create:
-  workflow_dispatch:
+   push:
+     branches:
+       - "main"
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
