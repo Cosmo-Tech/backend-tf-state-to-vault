@@ -55,6 +55,9 @@ Option 2. script local
         "cosmos_api_url": {
             "value": ""
         },
+        "cosmos_api_version": {
+            "value": ""
+        },
         "resource_group_name": {
             "value": ""
         },
