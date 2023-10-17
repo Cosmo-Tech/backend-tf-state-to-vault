@@ -13,18 +13,19 @@ logger = logging.getLogger('Babylon')
 class ExtractConfig():
 
     def dowload_ftstate(self):
-        prefix = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name}"
-        connection_str = f"{prefix};AccountKey={self.storage_secret};EndpointSuffix=core.windows.net"
+        prefix = "DefaultEndpointsProtocol=https;"
+        prefix += f"AccountName={self.storage_name}"
+        connection_str = f"{prefix};AccountKey={self.storage_secret};"
+        connection_str += "EndpointSuffix=core.windows.net"
         self.blob_client = BlobServiceClient.from_connection_string(
             connection_str)
-
         try:
             service = self.blob_client.get_container_client(
                 container=self.storage_container)
             blob = service.get_blob_client(self.tfstate_blob_name)
             state = blob.download_blob(encoding="utf-8").content_as_bytes()
             self.state = state
-        except:
+        except Exception:
             self.state = None
             logger.info("blob not found")
 
@@ -34,7 +35,7 @@ class ExtractConfig():
                 "PLATFORM_NAME", "STORAGE_ACCOUNT_NAME", "STORAGE_ACCOUNT_KEY",
                 "STORAGE_CONTAINER", "TFSTATE_BLOB_NAME"
         ]:
-            if not v in os.environ:
+            if v not in os.environ:
                 logger.error(f" {v} is missing")
                 sys.exit(1)
 
@@ -60,12 +61,13 @@ class ExtractConfig():
             logger.error("data is missing")
             sys.exit(1)
 
-        self.prefix = f"{self.org_name}/{self.tenant_id}/babylon/config/{self.platform_name}"
-        self.prefix_client = f"{self.org_name}/{self.tenant_id}/babylon/{self.platform_name}"
-        self.prefix_platform = f"{self.org_name}/{self.tenant_id}/platform"
+        org_tenant = f"{self.org_name}/{self.tenant_id}"
+        self.prefix = f"{org_tenant}/babylon/config/{self.platform_name}"
+        self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
+        self.prefix_platform = f"{org_tenant}/platform"
 
     def set_babylon_client_secret(self):
-        acr_login_server = "" if not "babylon_client_secret" in self.data[
+        acr_login_server = "" if "babylon_client_secret" not in self.data[
             'outputs'] else self.data['outputs']['babylon_client_secret'][
                 'value']
         client_secret = dict(secret=acr_login_server)
@@ -73,10 +75,10 @@ class ExtractConfig():
         return self
 
     def set_storage_client_secret(self):
-        storage_account_secret = "" if not "storage_account_secret" in self.data[
+        storage_acc_secret = "" if "storage_account_secret" not in self.data[
             'outputs'] else self.data['outputs']['storage_account_secret'][
                 'value']
-        client_secret = dict(secret=storage_account_secret)
+        client_secret = dict(secret=storage_acc_secret)
         self.upload_config(
             f"{self.prefix_platform}/{self.platform_name}/storage/account",
             client_secret)
@@ -88,7 +90,7 @@ class ExtractConfig():
         return self
 
     def write_acr(self):
-        acr_login_server = "" if not "acr_login_server" in self.data[
+        acr_login_server = "" if "acr_login_server" not in self.data[
             'outputs'] else self.data['outputs']['acr_login_server']['value']
         acr = {
             "login_server": acr_login_server,
@@ -113,15 +115,16 @@ class ExtractConfig():
         return self
 
     def write_adx(self):
-        adx_uri = "" if not "adx_uri" in self.data['outputs'] else self.data[
+        adx_uri = "" if "adx_uri" not in self.data['outputs'] else self.data[
             'outputs']['adx_uri']['value']
-        check_regex = re.compile("^https://([a-zA-Z|-]+).+")
+        check_regex = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+.kusto.net")
         match_content = check_regex.match(adx_uri)
         if not match_content:
+            print("error with uri adx cluster")
             return None
         cluster_name = match_content.groups()
         cluster_name = cluster_name[0] if len(cluster_name) else ""
-        cluster_principal_id = "" if not "cluster_principal_id" in self.data[
+        cluster_principal_id = "" if "cluster_principal_id" not in self.data[
             'outputs'] else self.data['outputs']['cluster_principal_id'][
                 'value']
         adx = {
@@ -137,13 +140,13 @@ class ExtractConfig():
 
     def write_api(self):
         suffix = ""
-        version = "" if not "cosmos_api_version" in self.data[
+        version = "" if "cosmos_api_version" not in self.data[
             'outputs'] else f"{self.data['outputs']['cosmos_api_version']['value']}"
-        scope = "" if not "cosmos_api_url" in self.data[
+        scope = "" if "cosmos_api_url" not in self.data[
             'outputs'] else f"{self.data['outputs']['cosmos_api_url']['value']}/.default"
-        if version is not None:
+        if version != "":
             suffix = f"/{version}"
-        url = "" if not "cosmos_api_url" in self.data[
+        url = "" if "cosmos_api_url" not in self.data[
             'outputs'] else f"{self.data['outputs']['cosmos_api_url']['value']}{suffix}"
         api = {
             "connector.adt_id": "",
@@ -170,14 +173,14 @@ class ExtractConfig():
         return self
 
     def write_azure(self):
-        resource_group_name = "" if not "resource_group_name" in self.data[
+        resource_group_name = "" if "resource_group_name" not in self.data[
             'outputs'] else self.data['outputs']['resource_group_name']['value']
-        resource_location = "" if not "resource_location" in self.data[
+        resource_location = "" if "resource_location" not in self.data[
             'outputs'] else self.data['outputs']['resource_location']['value']
-        storage_account_name = "" if not "storage_account_name" in self.data[
+        storage_account_name = "" if "storage_account_name" not in self.data[
             'outputs'] else self.data['outputs']['storage_account_name'][
                 'value']
-        subscription_id = "" if not "subscription_id" in self.data[
+        subscription_id = "" if "subscription_id" not in self.data[
             'outputs'] else self.data['outputs']['subscription_id']['value']
         azure = {
             "cli_client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
@@ -201,9 +204,9 @@ class ExtractConfig():
         return self
 
     def write_babylon(self):
-        babylon_client_id = "" if not "babylon_client_id" in self.data[
+        babylon_client_id = "" if "babylon_client_id" not in self.data[
             'outputs'] else self.data['outputs']['babylon_client_id']['value']
-        babylon_principal_id = "" if not "babylon_principal_id" in self.data[
+        babylon_principal_id = "" if "babylon_principal_id" not in self.data[
             'outputs'] else self.data['outputs']['babylon_principal_id'][
                 'value']
         babylon = {
@@ -225,10 +228,10 @@ class ExtractConfig():
         return self
 
     def write_plaftorm(self):
-        platform_sp_client_id = "" if not "platform_sp_client_id" in self.data[
+        platform_sp_client_id = "" if "platform_sp_client_id" not in self.data[
             'outputs'] else self.data['outputs']['platform_sp_client_id'][
                 'value']
-        platform_sp_object_id = "" if not "platform_sp_object_id" in self.data[
+        platform_sp_object_id = "" if "platform_sp_object_id" not in self.data[
             'outputs'] else self.data['outputs']['platform_sp_object_id'][
                 'value']
         platform = {
