@@ -141,7 +141,7 @@ class ExtractConfig():
             'outputs'] else f"{self.data['outputs']['cosmos_api_version']['value']}"
         scope = "" if not "cosmos_api_url" in self.data[
             'outputs'] else f"{self.data['outputs']['cosmos_api_url']['value']}/.default"
-        if version is not None:
+        if version != "":
             suffix = f"/{version}"
         url = "" if not "cosmos_api_url" in self.data[
             'outputs'] else f"{self.data['outputs']['cosmos_api_url']['value']}{suffix}"
