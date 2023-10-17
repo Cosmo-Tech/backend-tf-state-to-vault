@@ -3,8 +3,8 @@
 
 * Pull and tag
 ```bash
-docker pull ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest
-docker tag ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest upload
+docker pull ghcr.io/cosmo-tech/backend-tf-state-to-vault:<version>
+docker tag ghcr.io/cosmo-tech/backend-tf-state-to-vault:<version> upload
 ```
 
 * Run script
