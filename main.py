@@ -117,11 +117,12 @@ class ExtractConfig():
     def write_adx(self):
         adx_uri = "" if "adx_uri" not in self.data['outputs'] else self.data[
             'outputs']['adx_uri']['value']
-        check_regex = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+.kusto.net")
-        match_content = check_regex.match(adx_uri)
+        print(adx_uri)
+        ckrgx = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+\\.kusto\\..+$")
+        match_content = ckrgx.match(adx_uri)
         if not match_content:
             print("error with uri adx cluster")
-            return None
+            return self
         cluster_name = match_content.groups()
         cluster_name = cluster_name[0] if len(cluster_name) else ""
         cluster_principal_id = "" if "cluster_principal_id" not in self.data[
