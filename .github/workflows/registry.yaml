@@ -1,4 +1,4 @@
-name: Create and publish 2
+name: Create and publish
 
 on:
   create:
