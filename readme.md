@@ -3,8 +3,8 @@
 The first step is to retrieve the Docker image:
 
 ```bash
-docker pull ghcr.io/cosmo-tech/backend-tf-state-to-vault:<version>
-docker tag ghcr.io/cosmo-tech/backend-tf-state-to-vault:<version> upload
+docker pull ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest
+docker tag ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest upload
 ```
 
 Next, you will need to run the Docker image. However, it is necessary to set the following environment variables beforehand:
@@ -42,6 +42,9 @@ Then, copy the following content into the `state.json` file and configure it cor
         },
         "cosmos_api_url": {
             "value": <value>
+        },
+        "cosmos_api_scope": {
+            "value": ""
         },
         "cosmos_api_version": {
             "value": "v2"
@@ -81,6 +84,20 @@ Then, copy the following content into the `state.json` file and configure it cor
 ```
 
 Below, the meaning and role of each of the defined values above are detailed:
+```bash
+docker run -it \
+ -e VAULT_ADDR="$VAULT_ADDR" \
+ -e VAULT_TOKEN="$VAULT_TOKEN" \
+ -e TENANT_ID="$TENANT_ID" \
+ -e ORGANIZATION_NAME="$ORGANIZATION_NAME" \
+ -e STORAGE_ACCOUNT_NAME="$STORAGE_ACCOUNT_NAME" \
+ -e STORAGE_ACCOUNT_KEY="$STORAGE_ACCOUNT_KEY" \
+ -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
+ -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
+ -e PLATFORM_NAME="$PLATFORM_NAME" \
+ -v <path>/state.json:/usr/src/babyapp/state.json upload
+```
+
 
 - `acr_login_server`: Docker image server where the simulator image is located (refer to the resource group of the platform).
 - `adx_uri`: URI of the ADX cluster in the same resource group.
