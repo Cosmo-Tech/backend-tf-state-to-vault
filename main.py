@@ -278,7 +278,7 @@ class ExtractConfig:
         platform = {
             "app_id": platform_sp_client_id,
             "principal_id": platform_sp_object_id,
-            "scope_id": "",
+            "scope_id": "6332363e-bcba-4c4a-a605-c25f23117400",
         }
         self.upload_config(f"{self.prefix}/platform", platform)
         return self
