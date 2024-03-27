@@ -55,7 +55,7 @@ class ExtractConfig:
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
         self.data = None
-        _file = pathlib.Path("terraform.tfstate")
+        _file = pathlib.Path("state.json")
         if _file.exists():
             self.data = json.loads(_file.open("r").read())
         else:
