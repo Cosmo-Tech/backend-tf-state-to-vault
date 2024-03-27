@@ -162,7 +162,7 @@ class ExtractConfig:
         scope = (
             ""
             if "out_cosmos_api_scope" not in self.data["outputs"]
-            else f"{self.data['outputs']['out_cosmos_api_scope']['value']}/.default"
+            else f"{self.data['outputs']['out_cosmos_api_scope']['value']}"
         )
         url = (
             ""
