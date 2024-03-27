@@ -57,7 +57,8 @@ class ExtractConfig:
         self.data = None
         _file = pathlib.Path("state.json")
         if _file.exists():
-            self.data = json.loads(_file.open("r").read())
+            with open(_file) as f:
+                self.data = json.loads(f.read())
         else:
             self.dowload_ftstate()
             self.data = json.loads(self.state)
@@ -70,6 +71,7 @@ class ExtractConfig:
         self.prefix = f"{org_tenant}/babylon/config/{self.platform_name}"
         self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{org_tenant}/platform"
+
 
     def set_babylon_client_secret(self):
         acr_login_server = (
