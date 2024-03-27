@@ -159,23 +159,15 @@ class ExtractConfig:
         return self
 
     def write_api(self):
-        suffix = ""
-        version = (
-            ""
-            if "out_cosmos_api_version_path" not in self.data["outputs"]
-            else f"{self.data['outputs']['out_cosmos_api_version_path']['value']}"
-        )
         scope = (
             ""
             if "out_cosmos_api_scope" not in self.data["outputs"]
             else f"{self.data['outputs']['out_cosmos_api_scope']['value']}/.default"
         )
-        if version != "":
-            suffix = f"/{version}"
         url = (
             ""
             if "out_cosmos_api_url" not in self.data["outputs"]
-            else f"{self.data['outputs']['out_cosmos_api_url']['value']}{suffix}"
+            else f"{self.data['outputs']['out_cosmos_api_url']['value']}"
         )
         api = {
             "connector.adt_id": "",
