@@ -55,7 +55,7 @@ class ExtractConfig:
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
         self.data = None
-        _file = pathlib.Path("state.json")
+        _file = pathlib.Path("terraform.tfstate")
         if _file.exists():
             self.data = json.loads(_file.open("r").read())
         else:
@@ -74,8 +74,8 @@ class ExtractConfig:
     def set_babylon_client_secret(self):
         acr_login_server = (
             ""
-            if "babylon_client_secret" not in self.data["outputs"]
-            else self.data["outputs"]["babylon_client_secret"]["value"]
+            if "out_babylon_client_secret" not in self.data["outputs"]
+            else self.data["outputs"]["out_babylon_client_secret"]["value"]
         )
         client_secret = dict(secret=acr_login_server)
         self.upload_config(f"{self.prefix_client}/client", client_secret)
@@ -84,8 +84,8 @@ class ExtractConfig:
     def set_storage_client_secret(self):
         storage_acc_secret = (
             ""
-            if "storage_account_secret" not in self.data["outputs"]
-            else self.data["outputs"]["storage_account_secret"]["value"]
+            if "out_storage_account_secret" not in self.data["outputs"]
+            else self.data["outputs"]["out_storage_account_secret"]["value"]
         )
         client_secret = dict(secret=storage_acc_secret)
         self.upload_config(
@@ -102,8 +102,8 @@ class ExtractConfig:
     def write_acr(self):
         acr_login_server = (
             ""
-            if "acr_login_server" not in self.data["outputs"]
-            else self.data["outputs"]["acr_login_server"]["value"]
+            if "out_acr_login_server" not in self.data["outputs"]
+            else self.data["outputs"]["out_acr_login_server"]["value"]
         )
         acr = {
             "login_server": acr_login_server,
@@ -130,8 +130,8 @@ class ExtractConfig:
     def write_adx(self):
         adx_uri = (
             ""
-            if "adx_uri" not in self.data["outputs"]
-            else self.data["outputs"]["adx_uri"]["value"]
+            if "out_adx_uri" not in self.data["outputs"]
+            else self.data["outputs"]["out_adx_uri"]["value"]
         )
         ckrgx = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+\\.kusto\\..+$")
         match_content = ckrgx.match(adx_uri)
@@ -142,8 +142,8 @@ class ExtractConfig:
         cluster_name = cluster_name[0] if len(cluster_name) else ""
         cluster_principal_id = (
             ""
-            if "cluster_principal_id" not in self.data["outputs"]
-            else self.data["outputs"]["cluster_principal_id"]["value"]
+            if "out_cluster_adx_principal_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_cluster_adx_principal_id"]["value"]
         )
         adx = {
             "built_contributor_id": "b24988ac-6180-42a0-ab88-20f7382dd24c",
@@ -160,20 +160,20 @@ class ExtractConfig:
         suffix = ""
         version = (
             ""
-            if "cosmos_api_version" not in self.data["outputs"]
-            else f"{self.data['outputs']['cosmos_api_version']['value']}"
+            if "out_cosmos_api_version_path" not in self.data["outputs"]
+            else f"{self.data['outputs']['out_cosmos_api_version_path']['value']}"
         )
         scope = (
             ""
-            if "cosmos_api_scope" not in self.data["outputs"]
-            else f"{self.data['outputs']['cosmos_api_scope']['value']}/.default"
+            if "out_cosmos_api_scope" not in self.data["outputs"]
+            else f"{self.data['outputs']['out_cosmos_api_scope']['value']}/.default"
         )
         if version != "":
             suffix = f"/{version}"
         url = (
             ""
-            if "cosmos_api_url" not in self.data["outputs"]
-            else f"{self.data['outputs']['cosmos_api_url']['value']}{suffix}"
+            if "out_cosmos_api_url" not in self.data["outputs"]
+            else f"{self.data['outputs']['out_cosmos_api_url']['value']}{suffix}"
         )
         api = {
             "connector.adt_id": "",
@@ -202,23 +202,23 @@ class ExtractConfig:
     def write_azure(self):
         resource_group_name = (
             ""
-            if "resource_group_name" not in self.data["outputs"]
-            else self.data["outputs"]["resource_group_name"]["value"]
+            if "out_tenant_resource_group_name" not in self.data["outputs"]
+            else self.data["outputs"]["out_tenant_resource_group_name"]["value"]
         )
         resource_location = (
             ""
-            if "resource_location" not in self.data["outputs"]
-            else self.data["outputs"]["resource_location"]["value"]
+            if "out_resource_location" not in self.data["outputs"]
+            else self.data["outputs"]["out_resource_location"]["value"]
         )
         storage_account_name = (
             ""
-            if "storage_account_name" not in self.data["outputs"]
-            else self.data["outputs"]["storage_account_name"]["value"]
+            if "out_storage_account_name" not in self.data["outputs"]
+            else self.data["outputs"]["out_storage_account_name"]["value"]
         )
         subscription_id = (
             ""
-            if "subscription_id" not in self.data["outputs"]
-            else self.data["outputs"]["subscription_id"]["value"]
+            if "out_subscription_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_subscription_id"]["value"]
         )
         azure = {
             "cli_client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
@@ -241,13 +241,13 @@ class ExtractConfig:
     def write_babylon(self):
         babylon_client_id = (
             ""
-            if "babylon_client_id" not in self.data["outputs"]
-            else self.data["outputs"]["babylon_client_id"]["value"]
+            if "out_babylon_client_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_babylon_client_id"]["value"]
         )
         babylon_principal_id = (
             ""
-            if "babylon_principal_id" not in self.data["outputs"]
-            else self.data["outputs"]["babylon_principal_id"]["value"]
+            if "out_babylon_principal_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_babylon_principal_id"]["value"]
         )
         babylon = {"client_id": babylon_client_id, "principal_id": babylon_principal_id}
         self.upload_config(f"{self.prefix}/babylon", babylon)
@@ -267,13 +267,13 @@ class ExtractConfig:
     def write_plaftorm(self):
         platform_sp_client_id = (
             ""
-            if "platform_sp_client_id" not in self.data["outputs"]
-            else self.data["outputs"]["platform_sp_client_id"]["value"]
+            if "out_tenant_sp_client_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_tenant_sp_client_id"]["value"]
         )
         platform_sp_object_id = (
             ""
-            if "platform_sp_object_id" not in self.data["outputs"]
-            else self.data["outputs"]["platform_sp_object_id"]["value"]
+            if "out_tenant_sp_object_id" not in self.data["outputs"]
+            else self.data["outputs"]["out_tenant_sp_object_id"]["value"]
         )
         platform = {
             "app_id": platform_sp_client_id,
