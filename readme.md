@@ -31,53 +31,56 @@ Then, copy the following content into the `state.json` file and configure it cor
 ```json
 {
     "outputs": {
-        "acr_login_server": {
-            "value": <value>
+        "out_acr_login_server": {
+            "value": "",
         },
-        "adx_uri": {
-            "value": <value>
+        "out_adx_uri": {
+            "value": "",
         },
-        "cluster_principal_id": {
-            "value": <value>
+        "out_babylon_client_id": {
+            "value": "",
         },
-        "cosmos_api_url": {
-            "value": <value>
+        "out_babylon_client_secret": {
+            "value": "",
         },
-        "cosmos_api_scope": {
-            "value": ""
+        "out_babylon_principal_id": {
+            "value": "",
         },
-        "cosmos_api_version": {
-            "value": "v2"
+        "out_cluster_adx_name": {
+            "value": "",
         },
-        "resource_group_name": {
-            "value": <value>
+        "out_cluster_adx_principal_id": {
+           "value": "",
         },
-        "resource_location": {
-            "value": <value>
+        "out_cosmos_api_scope": {
+            "value": "",
         },
-        "storage_account_name": {
-            "value": <value>
+        "out_cosmos_api_url": {
+            "value": "",
         },
-        "storage_account_secret": {
-            "value": <value>
+        "out_cosmos_api_version_path": {
+            "value": "",
         },
-        "babylon_client_id": {
-            "value": <value>
+        "out_resource_location": {
+            "value": "",
         },
-        "babylon_principal_id": {
-            "value": <value>
+        "out_storage_account_name": {
+            "value": "",
         },
-        "babylon_client_secret": {
-            "value": <value>
+        "out_storage_account_secret": {
+            "value": "",
         },
-        "platform_sp_client_id": {
-            "value": <value>
+        "out_subscription_id": {
+            "value": "",
         },
-        "platform_sp_object_id": {
-            "value": <value>
+        "out_tenant_resource_group_name": {
+            "value": "",
         },
-        "subscription_id": {
-            "value": <value>
+        "out_tenant_sp_client_id": {
+            "value": "",
+        },
+        "out_tenant_sp_object_id": {
+            "value": "",
         }
     }
 }
@@ -95,7 +98,7 @@ docker run -it \
  -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
  -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
  -e PLATFORM_NAME="$PLATFORM_NAME" \
- -v <path>/state.json:/usr/src/babyapp/state.json upload
+ -v <path>/terraform.tfstate:/usr/src/babyapp/state.json upload
 ```
 
 
