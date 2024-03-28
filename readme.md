@@ -98,7 +98,7 @@ docker run -it \
  -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
  -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
  -e PLATFORM_NAME="$PLATFORM_NAME" \
- -v <path>/terraform.tfstate:/usr/src/babyapp/state.json upload
+ -v <path>/terraform.tfstate:/usr/src/babyapp/state.json ghcr.io/cosmo-tech/backend-tf-state-to-vault
 ```
 
 
