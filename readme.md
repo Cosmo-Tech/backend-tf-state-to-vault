@@ -4,7 +4,6 @@ The first step is to retrieve the Docker image:
 
 ```bash
 docker pull ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest
-docker tag ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest upload
 ```
 
 Next, you will need to run the Docker image. However, it is necessary to set the following environment variables beforehand:
@@ -98,7 +97,7 @@ docker run -it \
  -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
  -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
  -e PLATFORM_NAME="$PLATFORM_NAME" \
- -v <path>/terraform.tfstate:/usr/src/babyapp/state.json ghcr.io/cosmo-tech/backend-tf-state-to-vault
+ -v <path>/<terraform.state> | <state.json>:/usr/src/babyapp/state.json ghcr.io/cosmo-tech/backend-tf-state-to-vault
 ```
 
 
