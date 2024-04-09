@@ -25,7 +25,21 @@ export PLATFORM_NAME=<value>
 - `STORAGE_ACCOUNT_NAME` and the following three variables can remain empty, as they are managed automatically by the latest available Terraform scripts.
 - `PLATFORM_NAME`: the name of the platform, which will be passed as a parameter to Babylon commands via the `-p` option. In the Vault hierarchy, this implies `secrets/[organization_name]/[tenant_id]/[Platform_name]/`.
 
-Then, copy the following content into the `state.json` file and configure it correctly:
+If you have a terraform state file in azure storage account.
+```bash
+docker run -it \
+ -e VAULT_ADDR="$VAULT_ADDR" \
+ -e VAULT_TOKEN="$VAULT_TOKEN" \
+ -e TENANT_ID="$TENANT_ID" \
+ -e ORGANIZATION_NAME="$ORGANIZATION_NAME" \
+ -e STORAGE_ACCOUNT_NAME="$STORAGE_ACCOUNT_NAME" \
+ -e STORAGE_ACCOUNT_KEY="$STORAGE_ACCOUNT_KEY" \
+ -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
+ -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
+ -e PLATFORM_NAME="$PLATFORM_NAME" ghcr.io/cosmo-tech/backend-tf-state-to-vault
+```
+
+If you don't have a terraform state file in azure storage account but locally, copy the following content into the `state.json` file and configure it correctly:
 
 ```json
 {
@@ -97,7 +111,7 @@ docker run -it \
  -e STORAGE_CONTAINER="$STORAGE_CONTAINER" \
  -e TFSTATE_BLOB_NAME="$TFSTATE_BLOB_NAME" \
  -e PLATFORM_NAME="$PLATFORM_NAME" \
- -v <path>/<terraform.state> | <state.json>:/usr/src/babyapp/state.json ghcr.io/cosmo-tech/backend-tf-state-to-vault
+ -v <path>/<state.json>:/usr/src/babyapp/state.json ghcr.io/cosmo-tech/backend-tf-state-to-vault
 ```
 
 
@@ -105,11 +119,14 @@ docker run -it \
 - `adx_uri`: URI of the ADX cluster in the same resource group.
 - `cluster_principal_id`: Principal identifier of the ADX cluster (to be retrieved from its JSON view).
 - `cosmos_api_url`: URL of the API as previously deployed via Terraform scripts.
-- `cosmos_api_version`: `v2` API version that will be concatenated with `cosmos_api_url` to obtain the complete URL to use.
+- `cosmos_api_version`: `v3` API version that will be concatenated with `cosmos_api_url` to obtain the complete URL to use.
 - `resource-group-name`: The resource group.
-- `resource_location`: Region in which the resource group is deployed: e.g `West Europe`.
+- `resource_location`: Region in which the resource group is deployed: e.g `westeurope`.
 - `storage_account_name`: get the name of the storage account of the platform resource group.
 - `storage_account_secret`: go to the `Access Key` menu and use `key1`.
 - `babylon_client_id`: retrieve the application ID from the enterprise application of `Babylon`
 - `babylon_principal_id`: retrieve the object ID from the enterprise application `Babylon`
 - `babylon_client_secret`: create a new secret in the enterprise application `Babylon`
+
+
+
