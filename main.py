@@ -21,11 +21,11 @@ class ExtractConfig:
             service = self.blob_client.get_container_client(
                 container=self.storage_container
             )
-            blob = service.get_blob_client(self.tfstate_blob_name)
+            blob = service.get_blob_client(blob=self.tfstate_blob_name)
             state = blob.download_blob(encoding="utf-8").content_as_bytes()
             self.state = state
         except Exception:
-            self.state = None
+            self.state = dict()
             logger.info("blob not found")
 
     def __init__(self):
@@ -71,7 +71,6 @@ class ExtractConfig:
         self.prefix = f"{org_tenant}/babylon/config/{self.platform_name}"
         self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{org_tenant}/platform"
-
 
     def set_babylon_client_secret(self):
         acr_login_server = (
