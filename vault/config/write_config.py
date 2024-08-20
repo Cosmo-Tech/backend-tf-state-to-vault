@@ -4,13 +4,13 @@ import sys
 import json
 import pathlib
 import logging
-from hvac import Client
+import hvac
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
 
-class ExtractConfig:
+class WriteConfig:
     def dowload_ftstate(self):
         prefix = "DefaultEndpointsProtocol=https;"
         prefix += f"AccountName={self.storage_name}"
@@ -25,7 +25,7 @@ class ExtractConfig:
             state = blob.download_blob(encoding="utf-8").content_as_bytes()
             self.state = state
         except Exception:
-            self.state = dict()
+            self.state = "{}" 
             logger.info("blob not found")
 
     def __init__(self):
@@ -70,10 +70,19 @@ class ExtractConfig:
             logger.error("data is missing")
             sys.exit(1)
         
-        org_tenant = f"{self.org_name}/{self.tenant_id}"
-        self.prefix = f"{org_tenant}/babylon/config/{self.platform_name}"
-        self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
-        self.prefix_platform = f"{org_tenant}/platform"
+        tenant = f"{self.tenant_id}"
+        self.prefix = f"{tenant}/babylon/config/{self.platform_name}"
+        self.prefix_client = f"{tenant}/babylon/{self.platform_name}"
+        self.prefix_platform = f"{tenant}/platform"
+
+    def upload_config(self, schema: str, data: dict):
+        client = hvac.Client(url=self.server_id, token=self.token)
+        client.secrets.kv.v2.create_or_update_secret(
+            path=schema,
+            secret=data,
+            mount_point=self.org_name
+        )
+        return self
     
     def set_babylon_client_secret(self):
         acr_login_server = (
@@ -96,11 +105,6 @@ class ExtractConfig:
             f"{self.prefix_platform}/{self.platform_name}/storage/account",
             client_secret,
         )
-        return self
-
-    def upload_config(self, schema: str, data: dict):
-        client = Client(url=self.server_id, token=self.token)
-        client.write(schema, **data)
         return self
 
     def write_acr(self):
@@ -315,4 +319,6 @@ class ExtractConfig:
         self.write_plaftorm()
         self.write_powerbi()
         self.write_webapp()
+        self.set_storage_client_secret()
+        self.set_babylon_client_secret()
         return self

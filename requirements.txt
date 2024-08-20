@@ -1,2 +1,3 @@
 hvac
 azure-storage-blob
+PyYAML

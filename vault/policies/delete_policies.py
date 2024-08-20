@@ -1,12 +1,11 @@
 import logging
 import sys
 import os
-from hvac import Client
-from azure.storage.blob import BlobServiceClient
+import hvac
 
 logger = logging.getLogger("Babylon")
 
-class EnableNewTenant:
+class DeletePolicies:
     def __init__(self):
         for v in [
             "VAULT_ADDR",
@@ -34,13 +33,17 @@ class EnableNewTenant:
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
-    
-    def enable_tenant(self):
-        client = Client(url=self.server_id, token=self.token)
-        client.sys.enable_secrets_engine(backend_type='kv', path=self.org_name, options={'version': '1'})
-        client.sys.enable_secrets_engine(backend_type='kv', path='organization', options={'version': '1'})
-        data = {
-            "tenant": self.tenant_id,
-        }
-        client.write(f"organization/{self.org_name}", **data)
-        client.sys.enable_auth_method(method_type='userpass', path=f'userpass-{self.org_name}')
+   
+    def delete_policy(self, policy_name):
+        client = hvac.Client(url=self.server_id, token=self.token)
+        
+        try:
+            # Delete the policy
+            client.sys.delete_policy(name=policy_name)
+            print(f"Policy '{policy_name}' has been deleted.")
+        except hvac.exceptions.InvalidRequest as e:
+            print(f"Invalid request: {e}")
+        except hvac.exceptions.InvalidRequest as e:
+            print(f"Policy '{policy_name}' does not exist or could not be deleted: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")

@@ -241,18 +241,8 @@ docker run -it --entrypoint bash \
 ```
 With `--entrypoint bash`, you can enter interactive mode to execute all commands within the Python application. Here's what the application looks like:
 
-![alt text](image.png)
+![alt text](images/image.png)
 
-## Function : 
-- `addtenant`: Enables a new secrets engine.
-- `addpolicies`: Adds policies for admin, contributor, user, and external roles.
-- `addsecret`: Adds secrets defined in the secrets.json file.
-- `writeconfig`: Writes the entire platform configuration.
-- `deleteconfig`: Deletes the entire platform configuration.
-- `backup`: Creates a backup of the configuration for the current platform ID, which is specified in the platform_name environment variable. The backup is saved as a JSON file named `backup-<platform_name>.json`.
-- `import`: Imports the configuration for a platform and applies it to another platform. This function takes a parameter named `platform_id_to`, which specifies the target platform ID.
-- `adduser`: Adds a new user. This function requires parameters for user details.
-- `readconfig`: Reads a specific configuration.
 
 
 

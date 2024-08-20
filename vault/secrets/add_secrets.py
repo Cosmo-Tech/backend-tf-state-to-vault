@@ -3,34 +3,12 @@ import json
 import logging
 import sys
 import os
-from hvac import Client
+import hvac
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
-class ExtractSecrets:
-    def dowload_ftstate(self):
-        prefix = "DefaultEndpointsProtocol=https;"
-        prefix += f"AccountName={self.storage_name}"
-        conn_str = f"{prefix};AccountKey={self.storage_secret};"
-        conn_str += "EndpointSuffix=core.windows.net"
-        self.blob_client = BlobServiceClient.from_connection_string(conn_str)
-        try:
-            service = self.blob_client.get_container_client(
-                container=self.storage_container
-            )
-            blob = service.get_blob_client(blob=self.tfstate_blob_name)
-            state = blob.download_blob(encoding="utf-8").content_as_bytes()
-            self.state = state
-        except Exception:
-            self.state = dict()
-            logger.info("blob not found")
-            
-    def upload_config(self, schema: str, data: dict):
-        client = Client(url=self.server_id, token=self.token)
-        client.write(schema, **data)
-        return self
-
+class AddSecrets:
     def __init__(self):
         for v in [
             "VAULT_ADDR",
@@ -73,13 +51,58 @@ class ExtractSecrets:
             logger.error("secrets is missing")
             sys.exit(1)
 
-        org_tenant = f"{self.org_name}/{self.tenant_id}"
-        self.prefix_secrets = f"{org_tenant}/cluster/{self.cluster_name}"
+        tenant = f"{self.tenant_id}"
+        self.prefix_secrets = f"{tenant}/clusters/{self.cluster_name}"
+    
+    def dowload_ftstate(self):
+        prefix = "DefaultEndpointsProtocol=https;"
+        prefix += f"AccountName={self.storage_name}"
+        conn_str = f"{prefix};AccountKey={self.storage_secret};"
+        conn_str += "EndpointSuffix=core.windows.net"
+        self.blob_client = BlobServiceClient.from_connection_string(conn_str)
+        try:
+            service = self.blob_client.get_container_client(
+                container=self.storage_container
+            )
+            blob = service.get_blob_client(blob=self.tfstate_blob_name)
+            state = blob.download_blob(encoding="utf-8").content_as_bytes()
+            self.state = state
+        except Exception:
+            self.state = "{}" 
+            logger.info("blob not found")
+            
+    # def upload_config(self, schema: str, data: dict):
+    #     client = Client(url=self.server_id, token=self.token)
+    #     client.write(schema, **data)
+    #     return self
+    
+    def upload_secrets(self, schema: str, data: dict):
+        client = hvac.Client(url=self.server_id, token=self.token)
+        client.secrets.kv.v2.create_or_update_secret(
+            path=schema,
+            secret=data,
+            mount_point=self.org_name
+        )
+        return self
     
     def get_output_value(self, key):
             return self.secrets["outputs"][key]["value"] if key in self.secrets["outputs"] else ""
+    
+    def check_file_secret(self, file_path):
+        _secrets = pathlib.Path(file_path)
+        if _secrets.exists():
+            with open(_secrets) as f:
+                self.secrets = json.loads(f.read())
+        else:
+            self.dowload_ftstate()
+            self.secrets = json.loads(self.state)
 
-    def add_patform_secrets(self):
+        if self.secrets is None:
+            logger.error("secrets is missing")
+            sys.exit(1)
+
+    def add_patform_secrets(self, file_path):
+        self.check_file_secret(file_path)
         api_version = self.get_output_value("out_API_VERSION")
         acr_server = self.get_output_value("out_ACR_SERVER")
         acr_username = self.get_output_value("out_ACR_USERNAME")
@@ -150,5 +173,5 @@ class ExtractSecrets:
             "HOST_RDS_POSTGRES": host_rds_postgres,
             "SPRING_APPLICATION_JSON": spring_application_json
         }
-        self.upload_config(f"{self.prefix_secrets}/{self.platform_name}-platform-secrets", secrets)
+        self.upload_secrets(f"{self.prefix_secrets}/{self.platform_name}-platform-secrets", secrets)
         return self
