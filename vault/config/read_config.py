@@ -1,7 +1,7 @@
 import os
 import sys
 import logging
-from hvac import Client
+import hvac
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
@@ -42,9 +42,16 @@ class ReadConfig:
         self.prefix_platform = f"{org_tenant}/platform"
     
     def read_config(self, schema: str):
-        client = Client(url=self.server_id, token=self.token)
+        client = hvac.Client(url=self.server_id, token=self.token)
         data = client.read(schema).get('data', {})
         print(data)
+    
+    def write_config(self, schema: str):
+        client = hvac.Client(url=self.server_id, token=self.token)
+        response = client.secrets.kv.v2.read_secret_version(path=schema)
+        data = response['data']['data'] if 'data' in response and 'data' in response['data'] else {}
+        print(data)
+        return data
 
     def get_config(self, resource: str):
         match resource:
@@ -129,4 +136,18 @@ class ReadConfig:
 
     def read_webapp(self, resource):
         self.read_config(f"{self.prefix}/{resource}")
+        return self
+    
+    def delete_all_config(self, platform_id):
+        self.delete_acr(platform_id)
+        self.delete_adt(platform_id)
+        self.delete_app(platform_id)
+        self.delete_adx(platform_id)
+        self.delete_api(platform_id)
+        self.delete_azure(platform_id)
+        self.delete_babylon(platform_id)
+        self.delete_github(platform_id)
+        self.delete_plaftorm(platform_id)
+        self.delete_powerbi(platform_id)
+        self.delete_webapp(platform_id)
         return self

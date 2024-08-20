@@ -1,13 +1,13 @@
 import os
 import sys
 import logging
-from hvac import Client
+import hvac
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
 
-class DeletConfig:
+class DestroyConfig:
     def __init__(self):
         for v in [
             "VAULT_ADDR",
@@ -36,15 +36,49 @@ class DeletConfig:
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
-        org_tenant = f"{self.org_name}/{self.tenant_id}"
+        org_tenant = f"{self.tenant_id}"
         self.prefix = f"{org_tenant}/babylon/config"
         self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{org_tenant}/platform"
     
+    def destroy_get_config(self, resource: str, platform_id: str):
+        match resource:
+            case "acr":
+                self.delete_acr(platform_id)
+            case "adt":
+                self.delete_adt(platform_id)
+            case "adx":
+                self.delete_adx(platform_id)
+            case "app":
+                self.delete_app(platform_id)
+            case "api":
+                self.delete_api(platform_id)
+            case "azure":
+                self.delete_azure(platform_id)
+            case "babylon":
+                self.delete_babylon(platform_id)
+            case "github":
+                self.delete_github(platform_id)
+            case "platform":
+                self.delete_plaftorm(platform_id)
+            case "powerbi":
+                self.delete_powerbi(platform_id)
+            case "webapp":
+                self.delete_webapp(platform_id)
+            case "client":
+                self.delete_babylon_client_secret(platform_id)
+            case "storage":
+                self.delete_storage_client_secret(platform_id)
+            case _:
+                logger.error(f"The ressource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp', 'client', 'storage']")
+    
     def delete_config(self, schema: str):
-        client = Client(url=self.server_id, token=self.token)
-        client.delete(schema)
-        return self
+        client = hvac.Client(url=self.server_id, token=self.token)
+        client.secrets.kv.v2.destroy_secret_versions(
+            path=schema,
+            versions=[1, 2, 3],
+            mount_point=self.org_name,
+        )
     
     def delete_babylon_client_secret(self):
         self.delete_config(f"{self.prefix_client}/client")
@@ -100,7 +134,7 @@ class DeletConfig:
         self.delete_config(f"{self.prefix}/{platform_id}/webapp")
         return self
     
-    def delete_all_config(self, platform_id):
+    def destroy_all_config(self, platform_id):
         self.delete_acr(platform_id)
         self.delete_adt(platform_id)
         self.delete_app(platform_id)

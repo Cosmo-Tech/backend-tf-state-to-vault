@@ -1,0 +1,65 @@
+cosmotech_admin: |
+  path "{self.org_name}/{self.tenant_id}/*" {
+    capabilities = ["create", "read", "update", "delete", "list"]
+  }
+  path "organization/*" {
+    capabilities = ["create", "read", "update", "delete", "list"]
+  }
+  path "{self.org_name}/*" {
+    capabilities = ["create", "read", "update", "delete", "list"]
+  }
+  path "auth/userpass-{self.org_name}/users/*" {
+    capabilities = ["update"]
+    allowed_parameters = {
+      "password" = []
+    }
+  }
+  path "auth/token/create" {
+    capabilities = ["create", "update"]
+  }
+  path "auth/token/renew" {
+    capabilities = ["update"]
+  }
+  path "auth/token/revoke" {
+    capabilities = ["update"]
+  }
+
+contributor_policy: |
+  path "{self.org_name}/{self.tenant_id}/*" {
+    capabilities = ["create", "read", "update", "list"]
+  }
+  path "{self.org_name}/*" {
+    capabilities = ["create", "read", "update", "list"]
+  }
+  path "organization/*" {
+    capabilities = ["create", "read", "update", "list"]
+  }
+  path "auth/userpass-{self.org_name}/users/*" {
+    capabilities = ["update"]
+    allowed_parameters = {
+      "password" = []
+    }
+  }
+  path "auth/token/create" {
+    capabilities = ["create", "update"]
+  }
+  path "auth/token/renew" {
+    capabilities = ["update"]
+  }
+
+external_policy: |
+  path "auth/token/create" {
+    capabilities = ["create", "update"]
+  }
+  path "auth/token/renew" {
+    capabilities = ["update"]
+  }
+  path "{self.org_name}/platforms/*" {
+    capabilities = ["read", "list"]
+  }
+  path "organization/*" {
+    capabilities = ["read", "list"]
+  }
+  path "organization/{self.org_name}" {
+    capabilities = ["read", "list"]
+  }
