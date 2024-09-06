@@ -1,25 +1,18 @@
 import os
 import sys
+import json
 import logging
 import hvac
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
-
 class ReadConfig:
-    def __init__(self):
+    def __init__(self, local_file=None, use_azure=False):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR", "VAULT_TOKEN", "ORGANIZATION_NAME", "TENANT_ID",
+            "CLUSTER_NAME", "PLATFORM_NAME", "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY", "STORAGE_CONTAINER", "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -40,114 +33,130 @@ class ReadConfig:
         self.prefix = f"{org_tenant}/babylon/config/{self.platform_name}"
         self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{org_tenant}/platform"
-    
-    def read_config(self, schema: str):
-        client = hvac.Client(url=self.server_id, token=self.token)
-        data = client.read(schema).get('data', {})
-        print(data)
-    
-    def write_config(self, schema: str):
-        client = hvac.Client(url=self.server_id, token=self.token)
-        response = client.secrets.kv.v2.read_secret_version(path=schema)
-        data = response['data']['data'] if 'data' in response and 'data' in response['data'] else {}
-        print(data)
-        return data
+
+        self.vault_prefix = f"{self.tenant_id}/babylon/config/{self.platform_name}"
+
+        self.local_file = local_file
+        self.use_azure = use_azure and not local_file
+        self.data = None
+
+        self.vault_client = None
+        self.blob_client = None
+
+        if self.local_file:
+            self._read_local_state()
+        elif self.use_azure:
+            self._init_azure()
+        else:
+            self._init_vault()
+
+    def _read_local_state(self):
+        logger.info(f"Attempting to read from local file: {self.local_file}")
+        try:
+            with open(self.local_file, 'r') as f:
+                self.data = json.load(f)
+            logger.info(f"Successfully read data from {self.local_file}")
+        except Exception as e:
+            logger.error(f"Failed to read from local file: {str(e)}")
+            self.data = {}
+
+    def _init_azure(self):
+        try:
+            conn_str = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name};AccountKey={self.storage_secret};EndpointSuffix=core.windows.net"
+            self.blob_client = BlobServiceClient.from_connection_string(conn_str)
+            logger.info("Successfully initialized Azure Blob client")
+        except Exception as e:
+            logger.error(f"Failed to initialize Azure Blob client: {str(e)}")
+            self.blob_client = None
+
+    def _init_vault(self):
+        self.vault_client = hvac.Client(url=self.server_id, token=self.token)
+
+    def _read_config(self, resource: str):
+        if self.local_file:
+            return self.data.get("outputs", {}).get(resource, {}).get("value", {})
+        elif self.use_azure:
+            return self._read_from_azure(resource)
+        else:
+            return self._read_from_vault(f"{self.vault_prefix}/{resource}")
+
+    def _read_from_azure(self, resource):
+        try:
+            if not self.blob_client:
+                logger.error("Azure Blob client is not initialized")
+                return {}
+            container_client = self.blob_client.get_container_client(self.storage_container)
+            blob_client = container_client.get_blob_client(self.tfstate_blob_name)
+            blob_data = blob_client.download_blob().readall()
+            if not blob_data:
+                logger.warning(f"No data found in Azure Blob for resource: {resource}")
+                return {}
+            data = json.loads(blob_data)
+            return data.get("outputs", {}).get(resource, {}).get("value", {})
+        except Exception as e:
+            logger.error(f"Failed to read from Azure: {str(e)}")
+            return {}
+
+    def _read_from_vault(self, schema):
+        try:
+            response = self.vault_client.secrets.kv.v2.read_secret_version(path=schema, mount_point=self.org_name)
+            return response['data']['data'] if 'data' in response and 'data' in response['data'] else {}
+        except Exception as e:
+            logger.error(f"Failed to read from Vault: {str(e)}")
+            return {}
 
     def get_config(self, resource: str):
         match resource:
-            case "acr":
-                self.read_acr(resource)
-            case "adt":
-                self.read_adt(resource)
-            case "adx":
-                self.read_adx(resource)
-            case "app":
-                self.read_app(resource)
-            case "api":
-                self.read_api(resource)
-            case "azure":
-                self.read_azure(resource)
-            case "babylon":
-                self.read_babylon(resource)
-            case "github":
-                self.read_github(resource)
-            case "platform":
-                self.read_platform(resource)
-            case "powerbi":
-                self.read_powerbi(resource)
-            case "webapp":
-                self.read_webapp(resource)
+            case "acr" | "adt" | "adx" | "app" | "api" | "azure" | "babylon" | "github" | "platform" | "powerbi" | "webapp":
+                return self._read_config(resource)
             case "client":
-                self.read_babylon_client_secret()
+                return self._read_config("client")
             case "storage":
-                self.read_storage_client_secret()
+                return self._read_config("storage/account")
             case _:
-                logger.error(f"The ressource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp', 'client', 'storage']")
-    
+                logger.error(f"The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp', 'client', 'storage']")
+                return None
+
     def read_babylon_client_secret(self):
-        self.read_config(f"{self.prefix_client}/client")
-        return self
+        return self._read_config(f"{self.prefix_client}/client")
 
     def read_storage_client_secret(self):
-        self.read_config(
-            f"{self.prefix_platform}/{self.platform_name}/storage/account",
-        )
-        return self
+        return self._read_config(f"{self.prefix_platform}/{self.platform_name}/storage/account")
 
     def read_acr(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_adt(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_app(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_adx(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_api(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_azure(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_babylon(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_github(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_platform(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_powerbi(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
 
     def read_webapp(self, resource):
-        self.read_config(f"{self.prefix}/{resource}")
-        return self
-    
-    def delete_all_config(self, platform_id):
-        self.delete_acr(platform_id)
-        self.delete_adt(platform_id)
-        self.delete_app(platform_id)
-        self.delete_adx(platform_id)
-        self.delete_api(platform_id)
-        self.delete_azure(platform_id)
-        self.delete_babylon(platform_id)
-        self.delete_github(platform_id)
-        self.delete_plaftorm(platform_id)
-        self.delete_powerbi(platform_id)
-        self.delete_webapp(platform_id)
-        return self
+        return self._read_config(f"{self.prefix}/{resource}")
+
+    def read_all_config(self):
+        logger.info("Reading all config")
+        resources = ['acr', 'adt', 'adx', 'app', 'api', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp']
+        return {resource: self._read_config(resource) for resource in resources}
