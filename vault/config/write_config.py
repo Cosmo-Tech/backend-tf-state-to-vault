@@ -9,37 +9,12 @@ from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
-
 class WriteConfig:
-    def dowload_ftstate(self):
-        prefix = "DefaultEndpointsProtocol=https;"
-        prefix += f"AccountName={self.storage_name}"
-        conn_str = f"{prefix};AccountKey={self.storage_secret};"
-        conn_str += "EndpointSuffix=core.windows.net"
-        self.blob_client = BlobServiceClient.from_connection_string(conn_str)
-        try:
-            service = self.blob_client.get_container_client(
-                container=self.storage_container
-            )
-            blob = service.get_blob_client(blob=self.tfstate_blob_name)
-            state = blob.download_blob(encoding="utf-8").content_as_bytes()
-            self.state = state
-        except Exception:
-            self.state = "{}" 
-            logger.info("blob not found")
-
-    def __init__(self):
+    def __init__(self, local_file=None, use_azure=False):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR", "VAULT_TOKEN", "ORGANIZATION_NAME", "TENANT_ID",
+            "CLUSTER_NAME", "PLATFORM_NAME", "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY", "STORAGE_CONTAINER", "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -56,33 +31,101 @@ class WriteConfig:
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
-        self.data = None
-        self.secrets = None
-        _file = pathlib.Path("state.json")
-        if _file.exists():
-            with open(_file) as f:
-                self.data = json.loads(f.read())
-        else:
-            self.dowload_ftstate()
-            self.data = json.loads(self.state)
-
-        if self.data is None:
-            logger.error("data is missing")
-            sys.exit(1)
+        self.local_file = local_file
+        self.use_azure = use_azure and not local_file
+        self.vault_client = hvac.Client(url=self.server_id, token=self.token)
+        self.blob_client = None
         
+        self.data = {"outputs": {}}
+        self.secrets = None
+        
+        if self.use_azure:
+            self._init_blob_client()
+            self._read_or_create_azure_state()
+        elif self.local_file:
+            self._read_or_create_local_state()
+        else:
+            self._read_or_create_azure_state()
+
         tenant = f"{self.tenant_id}"
         self.prefix = f"{tenant}/babylon/config/{self.platform_name}"
         self.prefix_client = f"{tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{tenant}/platform"
 
+    def _init_blob_client(self):
+        try:
+            conn_str = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name};AccountKey={self.storage_secret};EndpointSuffix=core.windows.net"
+            self.blob_client = BlobServiceClient.from_connection_string(conn_str)
+        except Exception as e:
+            logger.error(f"Failed to initialize Azure Blob client: {str(e)}")
+
+    def _read_or_create_local_state(self):
+        if os.path.exists(self.local_file):
+            try:
+                with open(self.local_file, 'r') as f:
+                    self.data = json.load(f)
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON in {self.local_file}. Creating new state.")
+                self.data = {"outputs": {}}
+        else:
+            logger.info(f"File {self.local_file} not found. Creating new state.")
+            self.data = {"outputs": {}}
+
+    def _read_or_create_azure_state(self):
+        try:
+            container_client = self.blob_client.get_container_client(self.storage_container)
+            blob_client = container_client.get_blob_client(self.tfstate_blob_name)
+            
+            try:
+                self.state = blob_client.download_blob().readall()
+                self.data = json.loads(self.state)
+            except Exception as e:
+                logger.info(f"Blob not found or invalid. Creating new state. Error: {str(e)}")
+                self.data = {"outputs": {}}
+                
+        except Exception as e:
+            logger.error(f"Failed to access Azure Blob: {str(e)}")
+            self.data = {"outputs": {}}
+
     def upload_config(self, schema: str, data: dict):
-        client = hvac.Client(url=self.server_id, token=self.token)
-        client.secrets.kv.v2.create_or_update_secret(
-            path=schema,
-            secret=data,
-            mount_point=self.org_name
-        )
-        return self
+        if self.local_file or self.use_azure:
+            simplified_key = schema.split('/')[-1]
+            if self.local_file:
+                self._write_to_local(simplified_key, data)
+            else:
+                self._write_to_azure(simplified_key, data)
+        else:
+            self._write_to_vault(schema, data)
+
+    def _write_to_local(self, key: str, data: dict):
+        try:
+            self.data.setdefault("outputs", {})[key] = {"value": data}
+            with open(self.local_file, 'w') as f:
+                json.dump(self.data, f, indent=2)
+            logger.info(f"Successfully wrote {key} to local file")
+        except Exception as e:
+            logger.error(f"Failed to write to local file: {str(e)}")
+
+    def _write_to_azure(self, key: str, data: dict):
+        try:
+            self.data.setdefault("outputs", {})[key] = {"value": data}
+            container_client = self.blob_client.get_container_client(self.storage_container)
+            blob_client = container_client.get_blob_client(self.tfstate_blob_name)
+            blob_client.upload_blob(json.dumps(self.data), overwrite=True)
+            logger.info(f"Successfully wrote {key} to Azure Blob")
+        except Exception as e:
+            logger.error(f"Failed to write to Azure Blob: {str(e)}")
+
+    def _write_to_vault(self, schema: str, data: dict):
+        try:
+            self.vault_client.secrets.kv.v2.create_or_update_secret(
+                path=schema,
+                secret=data,
+                mount_point=self.org_name
+            )
+            logger.info(f"Successfully wrote {schema} to Vault")
+        except Exception as e:
+            logger.error(f"Failed to write to Vault: {str(e)}")
     
     def set_babylon_client_secret(self):
         acr_login_server = (
