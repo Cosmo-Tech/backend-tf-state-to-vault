@@ -1,5 +1,6 @@
 import logging
 import argparse
+import json
 from vault.secrets.add_secrets import AddSecrets
 from vault.secrets.delete_secrets import DeletesSecrets
 from vault.tenant.enable_tenant import EnableNewTenant
@@ -33,7 +34,7 @@ def main():
     )
     # Create the 'config' subcommand parser
     parser_config = subparsers.add_parser(
-        'config', 
+        'config',
         help='Operations related to configurations'
     )
     # Create subparsers for the 'config' command
@@ -43,47 +44,74 @@ def main():
         metavar='operation',
         help='Specific operation to perform under "config"'
     )
+    # 'read' subcommand under 'config'
+    parser_read = config_subparsers.add_parser(
+        'read',
+        help='Read configuration'
+    )
+    parser_read.add_argument(
+        '--resource',
+        help='Specify the resource to read, or "all" for all resources'
+    )
+    parser_read.add_argument(
+        '--file',
+        help='Path to local state file (optional)'
+    )
+    parser_read.add_argument(
+        '--use-azure',
+        action='store_true',
+        help='Use Azure Blob Storage instead of Vault'
+    )
     # 'write' subcommand under 'config'
     parser_write = config_subparsers.add_parser(
-        'write', 
-        help='Write a new configuration'
+        'write',
+        help='Write configuration'
+    )
+    parser_write.add_argument(
+        '--file',
+        help='Path to local state file (optional)'
+    )
+    parser_write.add_argument(
+        '--use-azure',
+        action='store_true',
+        help='Use Azure Blob Storage instead of Vault'
     )
     # 'delete' subcommand under 'config'
     parser_delete = config_subparsers.add_parser(
-        'delete', 
+        'delete',
         help='delete a new configuration'
     )
     
     parser_delete.add_argument(
-        '--resource', 
-        required=True, 
+        '--resource',
+        required=True,
         help='Specify the resource to delete. Accepted values: "acr", "adx ..", or "All" to delete configuration for all resources.'
     )
     parser_delete.add_argument(
-        '--platform_id', 
-        required=True, 
+        '--platform_id',
+        required=True,
         help='Platform ID to delete config'
     )
     
     # 'destroy' subcommand under 'config'
     parser_destroy = config_subparsers.add_parser(
-        'destroy', 
+        'destroy',
         help='destroy a new configuration'
     )
     
     parser_destroy.add_argument(
-        '--resource', 
-        required=True, 
+        '--resource',
+        required=True,
         help='Specify the resource to delete. Accepted values: "acr", "adx ..", or "All" to delete configuration for all resources.'
     )
     parser_destroy.add_argument(
-        '--platform_id', 
-        required=True, 
+        '--platform_id',
+        required=True,
         help='Platform ID to delete config'
     )
     # Create the 'tenant' subcommand parser
     parser_tenant = subparsers.add_parser(
-        'tenant', 
+        'tenant',
         help='Operations related to Tenant'
     )
     tenant_subparsers = parser_tenant.add_subparsers(
@@ -94,17 +122,17 @@ def main():
     )
 
     parser_tenant_enable = tenant_subparsers.add_parser(
-        'enable', 
+        'enable',
         help='Enable a new tenant'
     )
     parser_tenant_delete = tenant_subparsers.add_parser(
-        'disable', 
+        'disable',
         help='Disable an existing tenant'
     )
 
     # Add the 'User' subcommand parser
     parser_user = subparsers.add_parser(
-        'user', 
+        'user',
         help='Operations related to user management'
     )
 
@@ -117,7 +145,7 @@ def main():
 
     # 'adduser' subcommand under 'user'
     parser_adduser = user_subparsers.add_parser(
-        'add', 
+        'add',
         help='Add a new user'
     )
     parser_adduser.add_argument('--username', required=True, help='Username for the adduser operation')
@@ -127,13 +155,13 @@ def main():
 
     # 'userdelete' subcommand under 'user'
     parser_userdelete = user_subparsers.add_parser(
-        'delete', 
+        'delete',
         help='Delete an existing user'
     )
     parser_userdelete.add_argument('--username', required=True, help='Username of the user to delete')
     
     parser_secrets = subparsers.add_parser(
-        'secrets', 
+        'secrets',
         help='Operations related to secrets management'
     )
 
@@ -261,8 +289,34 @@ def main():
     # Handling the commands
     if args.command == 'config':
         if args.operation == 'write':
-            print(f"Writing configuration for all resources.")
-            write.write_all_config()
+            try:
+                write = WriteConfig(local_file=args.file, use_azure=args.use_azure)
+                print(f"Writing configuration for all resources.")
+                write.write_all_config()
+                print("Configuration written successfully.")
+            except Exception as e:
+                print(f"An error occurred while writing the configuration: {str(e)}")
+        elif args.operation == 'read':
+            if not args.resource:
+                logger.error("Error: --resource is required. Use 'all' to read all resources or specify a specific resource.")
+                parser_read.print_help()
+            else:
+                try:
+                    logger.info(f"Initializing ReadConfig with file={args.file}, use_azure={args.use_azure}")
+                    read = ReadConfig(local_file=args.file, use_azure=args.use_azure)
+                    if args.resource == 'all':
+                        logger.info("Reading configuration for all resources.")
+                        config = read.read_all_config()
+                    else:
+                        logger.info(f"Reading configuration for resource: {args.resource}")
+                        config = read.get_config(args.resource)
+                    
+                    if config:
+                        print(json.dumps(config, indent=2))
+                    else:
+                        logger.warning(f"No configuration found for resource: {args.resource}")
+                except Exception as e:
+                    logger.error(f"An error occurred while reading the configuration: {str(e)}", exc_info=True)
         elif args.operation == 'delete':
             if args.resource == 'all':
                 if args.platform_id:
