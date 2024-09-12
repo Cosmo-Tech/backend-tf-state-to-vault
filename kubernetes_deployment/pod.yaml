@@ -8,10 +8,25 @@ spec:
     image: backend-tf-state-to-vault:latest
     command: ["/bin/bash", "-c", "while true; do sleep 30; done;"]
     volumeMounts:
-    - name: azurefile-volume
-      mountPath: "/usr/src/babyapp"
+    - name: config-volume
+      mountPath: "/usr/src/babyapp/config.json"
+      subPath: config.json
+    - name: secret-volume
+      mountPath: "/usr/src/babyapp/secrets.json"
+      subPath: secrets.json
+    - name: secret-volume
+      mountPath: "/usr/src/babyapp/jlou.json"
+      subPath: jlou.json
+    # - name: azurefile-volume
+    #   mountPath: "/usr/src/babyapp"
   restartPolicy: Never
   volumes:
-  - name: azurefile-volume
-    persistentVolumeClaim:
-      claimName: azurefile-pvc
+  # - name: azurefile-volume
+  #   persistentVolumeClaim:
+  #     claimName: azurefile-pvc
+  - name: config-volume
+    configMap:
+      name: babyapp-config
+  - name: secret-volume
+    secret:
+      secretName: babyapp-secret 
