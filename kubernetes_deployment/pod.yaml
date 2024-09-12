@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: babyapp-pod
+spec:
+  containers:
+  - name: babyapp-container
+    image: backend-tf-state-to-vault:latest
+    command: ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+    volumeMounts:
+    - name: azurefile-volume
+      mountPath: "/usr/src/babyapp"
+  restartPolicy: Never
+  volumes:
+  - name: azurefile-volume
+    persistentVolumeClaim:
+      claimName: azurefile-pvc
