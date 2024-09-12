@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: babyapp-config
+data:
+  config.json: |
+    {
+        "outputs": {
+          "acr": {
+            "value": {
+              "login_server": "",
+              "simulator_repository": "",
+              "simulator_version": ""
+            }
+          },
+          "adt": {
+            "value": {
+              "built_owner_id": "bcd981a7-7f74-457b-83e1-cceb9e632ffe",
+              "built_reader_id": "d57506d4-4c8d-48b1-8587-93c323f6a5a3",
+              "digital_twin_url": ""
+            }
+          },
+          "app": {
+            "value": {
+              "app_id": "",
+              "name": "",
+              "object_id": "",
+              "principal_id": ""
+            }
+          },
+          "api": {
+            "value": {
+              "connector.adt_id": "",
+              "connector.adt_version": "",
+              "connector.storage_id": "",
+              "connector.storage_version": "",
+              "connector.twin_id": "",
+              "connector.twin_version": "",
+              "dataset.adt_id": "",
+              "dataset.storage_id": "",
+              "dataset.twin_id": "",
+              "organization_id": "",
+              "organization_url": "",
+              "run_templates": "",
+              "scope": "",
+              "send_scenario_metadata_to_event_hub": true,
+              "solution_id": "",
+              "url": "",
+              "use_dedicated_event_hub_namespace": true,
+              "workspace_id": "",
+              "workspace_key": ""
+            }
+          },
+          "azure": {
+            "value": {
+              "cli_client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
+              "email": "",
+              "eventhub_built_contributor_id": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+              "eventhub_built_data_receiver": "a638d3c7-ab3a-418d-83e6-5f17a39d4fde",
+              "eventhub_built_data_sender": "2b629674-e913-4c01-ae53-ef4638d8f975",
+              "function_artifact_url": "",
+              "resource_group_name": "",
+              "resource_location": "",
+              "storage_account_name": "",
+              "storage_blob_reader": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1",
+              "subscription_id": "",
+              "team_id": "",
+              "user_principal_id": ""
+            }
+          },
+          "babylon": {
+            "value": {
+              "client_id": "",
+              "principal_id": ""
+            }
+          },
+          "github": {
+            "value": {
+              "branch": "",
+              "organization": "",
+              "repository": "",
+              "run_url": "",
+              "workflow_path": ""
+            }
+          },
+          "platform": {
+            "value": {
+              "app_id": "",
+              "principal_id": "",
+              "scope_id": "6332363e-bcba-4c4a-a605-c25f23117400"
+            }
+          },
+          "powerbi": {
+            "value": {
+              "scope": "https://analysis.windows.net/powerbi/api/.default",
+              "dashboard_view": "",
+              "group_id": "",
+              "scenario_view": "",
+              "workspace.id": "",
+              "workspace.name": ""
+            }
+          },
+          "webapp": {
+            "value": {
+              "deployment_name": "",
+              "enable_insights": false,
+              "hostname": "",
+              "insights_instrumentation_key": "",
+              "location": "",
+              "static_domain": ""
+            }
+          }
+        }
+    }
+
