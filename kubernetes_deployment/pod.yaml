@@ -5,7 +5,7 @@ metadata:
 spec:
   containers:
   - name: babyapp-container
-    image: backend-tf-state-to-vault:latest
+    image: ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest
     command: ["/bin/bash", "-c", "while true; do sleep 30; done;"]
     env:
     - name: VAULT_ADDR
