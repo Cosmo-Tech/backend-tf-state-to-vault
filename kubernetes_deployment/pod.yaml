@@ -7,6 +7,27 @@ spec:
   - name: babyapp-container
     image: backend-tf-state-to-vault:latest
     command: ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+    env:
+    - name: VAULT_ADDR
+      value: "$VAULT_ADDR"
+    - name: VAULT_TOKEN
+      value: "$VAULT_TOKEN"
+    - name: TENANT_ID
+      value: "$TENANT_ID"
+    - name: ORGANIZATION_NAME
+      value: "$ORGANIZATION_NAME"
+    - name: CLUSTER_NAME
+      value: "$CLUSTER_NAME"
+    - name: STORAGE_ACCOUNT_NAME
+      value: "$STORAGE_ACCOUNT_NAME"
+    - name: STORAGE_ACCOUNT_KEY
+      value: "$STORAGE_ACCOUNT_KEY"
+    - name: STORAGE_CONTAINER
+      value: "$STORAGE_CONTAINER"
+    - name: TFSTATE_BLOB_NAME
+      value: "$TFSTATE_BLOB_NAME"
+    - name: PLATFORM_NAME
+      value: "$PLATFORM_NAME"
     volumeMounts:
     - name: config-volume
       mountPath: "/usr/src/babyapp/config.json"
@@ -17,16 +38,13 @@ spec:
     - name: secret-volume
       mountPath: "/usr/src/babyapp/jlou.json"
       subPath: jlou.json
-    # - name: azurefile-volume
-    #   mountPath: "/usr/src/babyapp"
+    stdin: true
+    tty: true
   restartPolicy: Never
   volumes:
-  # - name: azurefile-volume
-  #   persistentVolumeClaim:
-  #     claimName: azurefile-pvc
   - name: config-volume
     configMap:
       name: babyapp-config
   - name: secret-volume
     secret:
-      secretName: babyapp-secret 
+      secretName: babyapp-secret
