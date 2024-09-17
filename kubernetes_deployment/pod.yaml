@@ -6,7 +6,7 @@ spec:
   containers:
   - name: babyapp-container
     image: ghcr.io/cosmo-tech/backend-tf-state-to-vault:latest
-    command: ["/bin/bash", "-c", "while true; do sleep 30; done;"]
+    command: ["/bin/bash", "-c", "python main.py config write -use-azure"]
     env:
     - name: VAULT_ADDR
       value: "$VAULT_ADDR"
@@ -28,23 +28,3 @@ spec:
       value: "$TFSTATE_BLOB_NAME"
     - name: PLATFORM_NAME
       value: "$PLATFORM_NAME"
-    volumeMounts:
-    - name: config-volume
-      mountPath: "/usr/src/babyapp/config.json"
-      subPath: config.json
-    - name: secret-volume
-      mountPath: "/usr/src/babyapp/secrets.json"
-      subPath: secrets.json
-    - name: secret-volume
-      mountPath: "/usr/src/babyapp/jlou.json"
-      subPath: jlou.json
-    stdin: true
-    tty: true
-  restartPolicy: Never
-  volumes:
-  - name: config-volume
-    configMap:
-      name: babyapp-config
-  - name: secret-volume
-    secret:
-      secretName: babyapp-secret
