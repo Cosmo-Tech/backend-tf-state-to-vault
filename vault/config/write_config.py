@@ -9,12 +9,20 @@ from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
+
 class WriteConfig:
     def __init__(self, local_file=None, use_azure=False):
         for v in [
-            "VAULT_ADDR", "VAULT_TOKEN", "ORGANIZATION_NAME", "TENANT_ID",
-            "CLUSTER_NAME", "PLATFORM_NAME", "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY", "STORAGE_CONTAINER", "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR",
+            "VAULT_TOKEN",
+            "ORGANIZATION_NAME",
+            "TENANT_ID",
+            "CLUSTER_NAME",
+            "PLATFORM_NAME",
+            "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY",
+            "STORAGE_CONTAINER",
+            "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -35,10 +43,10 @@ class WriteConfig:
         self.use_azure = use_azure and not local_file
         self.vault_client = hvac.Client(url=self.server_id, token=self.token)
         self.blob_client = None
-        
+
         self.data = {"outputs": {}}
         self.secrets = None
-        
+
         if self.use_azure:
             self._init_blob_client()
             self._read_or_create_azure_state()
@@ -62,10 +70,12 @@ class WriteConfig:
     def _read_or_create_local_state(self):
         if os.path.exists(self.local_file):
             try:
-                with open(self.local_file, 'r') as f:
+                with open(self.local_file, "r") as f:
                     self.data = json.load(f)
             except json.JSONDecodeError:
-                logger.warning(f"Invalid JSON in {self.local_file}. Creating new state.")
+                logger.warning(
+                    f"Invalid JSON in {self.local_file}. Creating new state."
+                )
                 self.data = {"outputs": {}}
         else:
             logger.info(f"File {self.local_file} not found. Creating new state.")
@@ -73,34 +83,36 @@ class WriteConfig:
 
     def _read_or_create_azure_state(self):
         try:
-            container_client = self.blob_client.get_container_client(self.storage_container)
-            blob_client = container_client.get_blob_client(self.tfstate_blob_name)
-            
-            try:
-                self.state = blob_client.download_blob().readall()
-                self.data = json.loads(self.state)
-            except Exception as e:
-                logger.info(f"Blob not found or invalid. Creating new state. Error: {str(e)}")
-                self.data = {"outputs": {}}
-                
+            if self.blob_client:
+                container_client = self.blob_client.get_container_client(
+                    self.storage_container
+                )
+                blob_client = container_client.get_blob_client(self.tfstate_blob_name)
+
+                try:
+                    self.state = blob_client.download_blob().readall()
+                    self.data = json.loads(self.state)
+                except Exception as e:
+                    logger.info(
+                        f"Blob not found or invalid. Creating new state. Error: {str(e)}"
+                    )
+                    self.data = {"outputs": {}}
         except Exception as e:
             logger.error(f"Failed to access Azure Blob: {str(e)}")
-            self.data = {"outputs": {}}
+            # self.data = {"outputs": {}}
 
     def upload_config(self, schema: str, data: dict):
-        if self.local_file or self.use_azure:
-            simplified_key = schema.split('/')[-1]
+        if self.local_file:
+            simplified_key = schema.split("/")[-1]
             if self.local_file:
                 self._write_to_local(simplified_key, data)
-            else:
-                self._write_to_azure(simplified_key, data)
-        else:
+        if self.use_azure:
             self._write_to_vault(schema, data)
 
     def _write_to_local(self, key: str, data: dict):
         try:
             self.data.setdefault("outputs", {})[key] = {"value": data}
-            with open(self.local_file, 'w') as f:
+            with open(self.local_file, "w") as f:
                 json.dump(self.data, f, indent=2)
             logger.info(f"Successfully wrote {key} to local file")
         except Exception as e:
@@ -109,7 +121,9 @@ class WriteConfig:
     def _write_to_azure(self, key: str, data: dict):
         try:
             self.data.setdefault("outputs", {})[key] = {"value": data}
-            container_client = self.blob_client.get_container_client(self.storage_container)
+            container_client = self.blob_client.get_container_client(
+                self.storage_container
+            )
             blob_client = container_client.get_blob_client(self.tfstate_blob_name)
             blob_client.upload_blob(json.dumps(self.data), overwrite=True)
             logger.info(f"Successfully wrote {key} to Azure Blob")
@@ -119,14 +133,12 @@ class WriteConfig:
     def _write_to_vault(self, schema: str, data: dict):
         try:
             self.vault_client.secrets.kv.v2.create_or_update_secret(
-                path=schema,
-                secret=data,
-                mount_point=self.org_name
+                path=schema, secret=data, mount_point=self.org_name
             )
-            logger.info(f"Successfully wrote {schema} to Vault")
+            print(f"Successfully wrote {schema} to Vault")
         except Exception as e:
             logger.error(f"Failed to write to Vault: {str(e)}")
-    
+
     def set_babylon_client_secret(self):
         acr_login_server = (
             ""
@@ -187,7 +199,10 @@ class WriteConfig:
         ckrgx = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+\\.kusto\\..+$")
         match_content = ckrgx.match(adx_uri)
         if not match_content:
-            print("error with uri adx cluster")
+            adx = {
+                "cluster_name": "",
+            }
+            self.upload_config(f"{self.prefix}/adx", adx)
             return self
         cluster_name = match_content.groups()
         cluster_name = cluster_name[0] if len(cluster_name) else ""
@@ -331,7 +346,7 @@ class WriteConfig:
             "scope": "https://analysis.windows.net/powerbi/api/.default",
             "dashboard_view": "",
             "group_id": "",
-            "scenario_view": "",
+            "scena_write_to_azurerio_view": "",
             "workspace.id": "",
             "workspace.name": "",
         }
@@ -349,7 +364,7 @@ class WriteConfig:
         }
         self.upload_config(f"{self.prefix}/webapp", webapp)
         return self
-    
+
     def write_all_config(self):
         self.write_acr()
         self.write_adt()
