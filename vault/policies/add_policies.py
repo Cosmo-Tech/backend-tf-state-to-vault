@@ -2,24 +2,25 @@ import logging
 import sys
 import os
 import hvac
-from azure.storage.blob import BlobServiceClient
 import yaml
 
 logger = logging.getLogger("Babylon")
 
+
 class AddPolicies:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -46,14 +47,14 @@ class AddPolicies:
         if not os.path.isfile(file_path):
             print(f"File not found: {file_path}")
             return
-        
+
         try:
             with open(file_path, 'r') as f:
                 policies = yaml.safe_load(f)
-            
+
             if not isinstance(policies, dict):
                 raise ValueError("YAML file must contain a dictionary of policies.")
-            
+
             for policy_name, policy_rules in policies.items():
                 if not policy_name or not policy_rules:
                     print(f"Skipping invalid policy: {policy_name}")
@@ -71,12 +72,12 @@ class AddPolicies:
                 # Add or update the policy in Vault
                 client.sys.create_or_update_policy(name=policy_name, policy=policy_rules)
                 print(f"Policy '{policy_name}' has been added or updated successfully.")
-        
+
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file: {e}")
-        
+
         except hvac.exceptions.InvalidRequest as e:
             print(f"Error adding policy: {e}")
-        
+
         except Exception as e:
             print(f"Unexpected error: {e}")

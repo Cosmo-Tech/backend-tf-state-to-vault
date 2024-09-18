@@ -2,24 +2,24 @@ import os
 import sys
 import logging
 import hvac
-from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
 
 class DeleteConfig:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -40,7 +40,7 @@ class DeleteConfig:
         self.prefix = f"{org_tenant}/babylon/config"
         self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
         self.prefix_platform = f"{org_tenant}/platform"
-    
+
     def delete_get_config(self, resource: str, platform_id: str):
         match resource:
             case "acr":
@@ -70,24 +70,25 @@ class DeleteConfig:
             case "storage":
                 self.delete_storage_client_secret(platform_id)
             case _:
-                logger.error(f"The ressource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp', 'client', 'storage']")
-    
+                logger.error("""
+The ressource should be 
+['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github',
+'platform', 'powerbi', 'webapp', 'client', 'storage']""")
+
     def delete_config(self, schema: str):
         client = hvac.Client(url=self.server_id, token=self.token)
-        res = client.secrets.kv.v2.delete_metadata_and_all_versions(
+        client.secrets.kv.v2.delete_metadata_and_all_versions(
             path=schema,
             mount_point=self.org_name,
         )
         return self
-    
+
     def delete_babylon_client_secret(self):
         self.delete_config(f"{self.prefix_client}/client")
         return self
 
     def delete_storage_client_secret(self):
-        self.delete_config(
-            f"{self.prefix_platform}/{self.platform_name}/storage/account",
-        )
+        self.delete_config(f"{self.prefix_platform}/{self.platform_name}/storage/account", )
         return self
 
     def delete_acr(self, platform_id):
@@ -133,7 +134,7 @@ class DeleteConfig:
     def delete_webapp(self, platform_id):
         self.delete_config(f"{self.prefix}/{platform_id}/webapp")
         return self
-    
+
     def delete_all_config(self, platform_id):
         self.delete_acr(platform_id)
         self.delete_adt(platform_id)

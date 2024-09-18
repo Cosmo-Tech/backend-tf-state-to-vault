@@ -7,12 +7,21 @@ from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
+
 class ReadConfig:
+
     def __init__(self, local_file=None, use_azure=False):
         for v in [
-            "VAULT_ADDR", "VAULT_TOKEN", "ORGANIZATION_NAME", "TENANT_ID",
-            "CLUSTER_NAME", "PLATFORM_NAME", "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY", "STORAGE_CONTAINER", "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -53,7 +62,7 @@ class ReadConfig:
     def _read_local_state(self):
         logger.info(f"Attempting to read from local file: {self.local_file}")
         try:
-            with open(self.local_file, 'r') as f:
+            with open(self.local_file, "r") as f:
                 self.data = json.load(f)
             logger.info(f"Successfully read data from {self.local_file}")
         except Exception as e:
@@ -62,7 +71,8 @@ class ReadConfig:
 
     def _init_azure(self):
         try:
-            conn_str = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name};AccountKey={self.storage_secret};EndpointSuffix=core.windows.net"
+            account_key = (f"AccountKey={self.storage_secret};EndpointSuffix=core.windows.net")
+            conn_str = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name};{account_key}"
             self.blob_client = BlobServiceClient.from_connection_string(conn_str)
             logger.info("Successfully initialized Azure Blob client")
         except Exception as e:
@@ -100,21 +110,34 @@ class ReadConfig:
     def _read_from_vault(self, schema):
         try:
             response = self.vault_client.secrets.kv.v2.read_secret_version(path=schema, mount_point=self.org_name)
-            return response['data']['data'] if 'data' in response and 'data' in response['data'] else {}
+            return (response["data"]["data"] if "data" in response and "data" in response["data"] else {})
         except Exception as e:
             logger.error(f"Failed to read from Vault: {str(e)}")
             return {}
 
     def get_config(self, resource: str):
         match resource:
-            case "acr" | "adt" | "adx" | "app" | "api" | "azure" | "babylon" | "github" | "platform" | "powerbi" | "webapp":
+            case ("acr"
+                  | "adt"
+                  | "adx"
+                  | "app"
+                  | "api"
+                  | "azure"
+                  | "babylon"
+                  | "github"
+                  | "platform"
+                  | "powerbi"
+                  | "webapp"):
                 return self._read_config(resource)
             case "client":
                 return self._read_config("client")
             case "storage":
                 return self._read_config("storage/account")
             case _:
-                logger.error(f"The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp', 'client', 'storage']")
+                logger.error("""
+The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 
+'platform', 'powerbi', 'webapp', 'client', 'storage']
+""")
                 return None
 
     def read_babylon_client_secret(self):
@@ -158,5 +181,17 @@ class ReadConfig:
 
     def read_all_config(self):
         logger.info("Reading all config")
-        resources = ['acr', 'adt', 'adx', 'app', 'api', 'azure', 'babylon', 'github', 'platform', 'powerbi', 'webapp']
+        resources = [
+            "acr",
+            "adt",
+            "adx",
+            "app",
+            "api",
+            "azure",
+            "babylon",
+            "github",
+            "platform",
+            "powerbi",
+            "webapp",
+        ]
         return {resource: self._read_config(resource) for resource in resources}

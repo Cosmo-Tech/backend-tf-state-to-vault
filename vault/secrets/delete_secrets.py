@@ -1,26 +1,25 @@
-import pathlib
-import json
 import logging
 import sys
 import os
 import hvac
-from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
+
 class DeletesSecrets:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -39,7 +38,7 @@ class DeletesSecrets:
 
         tenant = f"{self.tenant_id}"
         self.prefix_secrets = f"{tenant}/cluster/{self.cluster_name}"
-    
+
     def delete_secrets(self):
         client = hvac.Client(url=self.server_id, token=self.token)
         client.secrets.kv.v2.delete_metadata_and_all_versions(

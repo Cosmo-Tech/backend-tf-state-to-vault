@@ -2,23 +2,24 @@ import logging
 import sys
 import os
 from hvac import Client
-from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
+
 class AddPlocies:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")

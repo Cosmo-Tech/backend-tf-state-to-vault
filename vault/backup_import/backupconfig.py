@@ -2,26 +2,25 @@ import logging
 import sys
 import os
 import json
-import pathlib
 import hvac
-from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
 
 class Backup:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -43,7 +42,7 @@ class Backup:
 
     def backup_config(self):
         client = hvac.Client(url=self.server_id, token=self.token)
-        
+
         # Define the paths for KV version 2
         paths = {
             "acr": f"{self.prefix}/{self.platform_name}/acr",
@@ -60,7 +59,7 @@ class Backup:
         }
 
         config = {}
-        
+
         # Read each path using KV version 2
         for key, path in paths.items():
             try:
@@ -76,18 +75,8 @@ class Backup:
         output_file = f"backup-{self.platform_name}.json"
         with open(output_file, 'w') as f:
             json.dump(config, f, indent=2)
-        
+
         logger.info(f"Configuration backed up to {output_file}")
-
-
-
-
-
-
-
-
-
-    
 
     # def backup_config(self):
     #     client = Client(url=self.server_id, token=self.token)

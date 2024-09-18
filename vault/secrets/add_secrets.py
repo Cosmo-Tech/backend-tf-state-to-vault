@@ -8,19 +8,21 @@ from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger("Babylon")
 
+
 class AddSecrets:
+
     def __init__(self):
         for v in [
-            "VAULT_ADDR",
-            "VAULT_TOKEN",
-            "ORGANIZATION_NAME",
-            "TENANT_ID",
-            "CLUSTER_NAME",
-            "PLATFORM_NAME",
-            "STORAGE_ACCOUNT_NAME",
-            "STORAGE_ACCOUNT_KEY",
-            "STORAGE_CONTAINER",
-            "TFSTATE_BLOB_NAME",
+                "VAULT_ADDR",
+                "VAULT_TOKEN",
+                "ORGANIZATION_NAME",
+                "TENANT_ID",
+                "CLUSTER_NAME",
+                "PLATFORM_NAME",
+                "STORAGE_ACCOUNT_NAME",
+                "STORAGE_ACCOUNT_KEY",
+                "STORAGE_CONTAINER",
+                "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -53,7 +55,7 @@ class AddSecrets:
 
         tenant = f"{self.tenant_id}"
         self.prefix_secrets = f"{tenant}/clusters/{self.cluster_name}"
-    
+
     def dowload_ftstate(self):
         prefix = "DefaultEndpointsProtocol=https;"
         prefix += f"AccountName={self.storage_name}"
@@ -61,33 +63,27 @@ class AddSecrets:
         conn_str += "EndpointSuffix=core.windows.net"
         self.blob_client = BlobServiceClient.from_connection_string(conn_str)
         try:
-            service = self.blob_client.get_container_client(
-                container=self.storage_container
-            )
+            service = self.blob_client.get_container_client(container=self.storage_container)
             blob = service.get_blob_client(blob=self.tfstate_blob_name)
             state = blob.download_blob(encoding="utf-8").content_as_bytes()
             self.state = state
         except Exception:
-            self.state = "{}" 
+            self.state = "{}"
             logger.info("blob not found")
-            
+
     # def upload_config(self, schema: str, data: dict):
     #     client = Client(url=self.server_id, token=self.token)
     #     client.write(schema, **data)
     #     return self
-    
+
     def upload_secrets(self, schema: str, data: dict):
         client = hvac.Client(url=self.server_id, token=self.token)
-        client.secrets.kv.v2.create_or_update_secret(
-            path=schema,
-            secret=data,
-            mount_point=self.org_name
-        )
+        client.secrets.kv.v2.create_or_update_secret(path=schema, secret=data, mount_point=self.org_name)
         return self
-    
+
     def get_output_value(self, key):
-            return self.secrets["outputs"][key]["value"] if key in self.secrets["outputs"] else ""
-    
+        return self.secrets["outputs"][key]["value"] if key in self.secrets["outputs"] else ""
+
     def check_file_secret(self, file_path):
         _secrets = pathlib.Path(file_path)
         if _secrets.exists():
