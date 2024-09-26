@@ -9,14 +9,13 @@ logger = logging.getLogger("Babylon")
 
 class Backup:
 
-    def __init__(self):
+    def __init__(self, version_engine: str = "v2"):
         for v in [
                 "VAULT_ADDR",
                 "VAULT_TOKEN",
                 "ORGANIZATION_NAME",
                 "TENANT_ID",
                 "CLUSTER_NAME",
-                "PLATFORM_NAME",
                 "STORAGE_ACCOUNT_NAME",
                 "STORAGE_ACCOUNT_KEY",
                 "STORAGE_CONTAINER",
@@ -26,101 +25,71 @@ class Backup:
                 logger.error(f" {v} is missing")
                 sys.exit(1)
 
+        self.version_engine = version_engine
         self.server_id = os.environ.get("VAULT_ADDR")
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
         self.cluster_name = os.environ.get("CLUSTER_NAME")
-        self.platform_name = os.environ.get("PLATFORM_NAME")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
-        org_tenant = f"{self.tenant_id}"
-        self.prefix = f"{org_tenant}/babylon/config"
+        self.org_tenant = f"{self.tenant_id}"
+        self.prefix = f"{self.org_tenant}/babylon/config"
 
-    def backup_config(self):
+    def backup_config(self, platform_id: str):
         client = hvac.Client(url=self.server_id, token=self.token)
+        self.platform_prefix = f"{self.org_tenant}/platform/{platform_id}"
+        self.babylon_prefix = f"{self.org_tenant}/babylon/{platform_id}"
 
         # Define the paths for KV version 2
         paths = {
-            "acr": f"{self.prefix}/{self.platform_name}/acr",
-            "adt": f"{self.prefix}/{self.platform_name}/adt",
-            "adx": f"{self.prefix}/{self.platform_name}/adx",
-            "api": f"{self.prefix}/{self.platform_name}/api",
-            "app": f"{self.prefix}/{self.platform_name}/app",
-            "azure": f"{self.prefix}/{self.platform_name}/azure",
-            "babylon": f"{self.prefix}/{self.platform_name}/babylon",
-            "github": f"{self.prefix}/{self.platform_name}/github",
-            "platform": f"{self.prefix}/{self.platform_name}/platform",
-            "powerbi": f"{self.prefix}/{self.platform_name}/powerbi",
-            "webapp": f"{self.prefix}/{self.platform_name}/webapp"
+            "acr": f"{self.prefix}/{platform_id}/acr",
+            "adt": f"{self.prefix}/{platform_id}/adt",
+            "adx": f"{self.prefix}/{platform_id}/adx",
+            "api": f"{self.prefix}/{platform_id}/api",
+            "app": f"{self.prefix}/{platform_id}/app",
+            "azure": f"{self.prefix}/{platform_id}/azure",
+            "babylon": f"{self.prefix}/{platform_id}/babylon",
+            "github": f"{self.prefix}/{platform_id}/github",
+            "platform": f"{self.prefix}/{platform_id}/platform",
+            "powerbi": f"{self.prefix}/{platform_id}/powerbi",
+            "webapp": f"{self.prefix}/{platform_id}/webapp",
+            "client": f"{self.babylon_prefix}/client",
+            "storage": f"{self.platform_prefix}/storage/account"
         }
 
         config = {}
 
         # Read each path using KV version 2
-        for key, path in paths.items():
+        for k_, schema in paths.items():
             try:
-                response = client.secrets.kv.v2.read_secret_version(
-                    path=path,
-                    mount_point=self.org_name,
-                )
-                config[key] = response.get('data', {}).get('data', {})
+                resource = schema.split("/")[-1]
+                if self.version_engine == "v1":
+                    response = client.read(path=f"{self.org_name}/{schema}")
+                    data = response.get('data', {})
+                    output = dict(outputs=dict())
+                    for i, k in data.items():
+                        output["outputs"].setdefault(f"out_{resource}_{i}", dict(value=k))
+                else:
+                    response = client.secrets.kv.v2.read_secret_version(
+                        path=schema,
+                        mount_point=self.org_name,
+                    )
+                    # config[key] = response.get('data', {}).get('data', {})
             except Exception as e:
-                logger.warning(f"Failed to read secret from path '{path}': {e}")
-                config[key] = {}
+                logger.warning(f"Failed to read secret from path '{schema}': {e}")
+                # config[key] = {}
 
-        output_file = f"backup-{self.platform_name}.json"
+            config[k_] = output
+
+        config = {"outputs": config}
+        output_file = f"backup.{platform_id}.json"
         with open(output_file, 'w') as f:
             json.dump(config, f, indent=2)
-
         logger.info(f"Configuration backed up to {output_file}")
-
-    # def backup_config(self):
-    #     client = Client(url=self.server_id, token=self.token)
-    #     acr_path = f"{self.prefix}/{self.platform_name}/acr"
-    #     adt_path = f"{self.prefix}/{self.platform_name}/adt"
-    #     adx_path = f"{self.prefix}/{self.platform_name}/adx"
-    #     api_path = f"{self.prefix}/{self.platform_name}/api"
-    #     app_path = f"{self.prefix}/{self.platform_name}/app"
-    #     azure_path = f"{self.prefix}/{self.platform_name}/azure"
-    #     babylon_path = f"{self.prefix}/{self.platform_name}/babylon"
-    #     github_path = f"{self.prefix}/{self.platform_name}/github"
-    #     platform_path = f"{self.prefix}/{self.platform_name}/platform"
-    #     powerbi_path = f"{self.prefix}/{self.platform_name}/powerbi"
-    #     webapp_path = f"{self.prefix}/{self.platform_name}/webapp"
-
-    #     acr = client.read(acr_path).get('data', {})
-    #     adt = client.read(adt_path).get('data', {})
-    #     adx = client.read(adx_path).get('data', {})
-    #     api = client.read(api_path).get('data', {})
-    #     app = client.read(app_path).get('data', {})
-    #     azure = client.read(azure_path).get('data', {})
-    #     babylon = client.read(babylon_path).get('data', {})
-    #     github = client.read(github_path).get('data', {})
-    #     platform = client.read(platform_path).get('data', {})
-    #     powerbi = client.read(powerbi_path).get('data', {})
-    #     webapp = client.read(webapp_path).get('data', {})
-
-    #     config = {
-    #         "acr": acr,
-    #         "adt": adt,
-    #         "adx": adx,
-    #         "api": api,
-    #         "app": app,
-    #         "azure": azure,
-    #         "babylon": babylon,
-    #         "github": github,
-    #         "platform": platform,
-    #         "powerbi": powerbi,
-    #         "webapp": webapp
-    #     }
-    #     output_file = f"backup-{self.platform_name}.json"
-    #     with open(output_file, 'w') as f:
-    #         json.dump(config, f, indent=2)
-    #     logger.info(f"Configuration sauvegardée dans {output_file}")
 
     # def save_backup_to_blob(self):
     #     _file = pathlib.Path(f"backup-{self.platform_name}.json")

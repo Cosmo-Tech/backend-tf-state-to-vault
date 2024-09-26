@@ -8,87 +8,83 @@ logger = logging.getLogger("Babylon")
 
 class DeleteConfig:
 
-    def __init__(self):
+    def __init__(self, version_engine: str = "v2"):
         for v in [
-                "VAULT_ADDR",
-                "VAULT_TOKEN",
-                "ORGANIZATION_NAME",
-                "TENANT_ID",
-                "CLUSTER_NAME",
-                "PLATFORM_NAME",
-                "STORAGE_ACCOUNT_NAME",
-                "STORAGE_ACCOUNT_KEY",
-                "STORAGE_CONTAINER",
-                "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR",
+            "VAULT_TOKEN",
+            "TENANT_ID",
+            "ORGANIZATION_NAME",
+            "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY",
+            "STORAGE_CONTAINER",
+            "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
                 sys.exit(1)
 
+        self.version_engine = version_engine
         self.server_id = os.environ.get("VAULT_ADDR")
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
-        self.cluster_name = os.environ.get("CLUSTER_NAME")
-        self.platform_name = os.environ.get("PLATFORM_NAME")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
-        org_tenant = f"{self.tenant_id}"
-        self.prefix = f"{org_tenant}/babylon/config"
-        self.prefix_client = f"{org_tenant}/babylon/{self.platform_name}"
-        self.prefix_platform = f"{org_tenant}/platform"
+        self.org_tenant = f"{self.tenant_id}"
+        self.prefix = f"{self.org_tenant}/babylon/config"
 
     def delete_get_config(self, resource: str, platform_id: str):
-        match resource:
-            case "acr":
-                self.delete_acr(platform_id)
-            case "adt":
-                self.delete_adt(platform_id)
-            case "adx":
-                self.delete_adx(platform_id)
-            case "app":
-                self.delete_app(platform_id)
-            case "api":
-                self.delete_api(platform_id)
-            case "azure":
-                self.delete_azure(platform_id)
-            case "babylon":
-                self.delete_babylon(platform_id)
-            case "github":
-                self.delete_github(platform_id)
-            case "platform":
-                self.delete_plaftorm(platform_id)
-            case "powerbi":
-                self.delete_powerbi(platform_id)
-            case "webapp":
-                self.delete_webapp(platform_id)
-            case "client":
-                self.delete_babylon_client_secret(platform_id)
-            case "storage":
-                self.delete_storage_client_secret(platform_id)
-            case _:
-                logger.error("""
-The ressource should be 
-['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github',
-'platform', 'powerbi', 'webapp', 'client', 'storage']""")
+        if resource == "acr":
+            self.delete_acr(platform_id)
+        if resource == "adt":
+            self.delete_adt(platform_id)
+        if resource == "adx":
+            self.delete_adx(platform_id)
+        if resource == "app":
+            self.delete_app(platform_id)
+        if resource == "api":
+            self.delete_api(platform_id)
+        if resource == "azure":
+            self.delete_azure(platform_id)
+        if resource == "babylon":
+            self.delete_babylon(platform_id)
+        if resource == "github":
+            self.delete_github(platform_id)
+        if resource == "platform":
+            self.delete_plaftorm(platform_id)
+        if resource == "powerbi":
+            self.delete_powerbi(platform_id)
+        if resource == "webapp":
+            self.delete_webapp(platform_id)
+        if resource == "client":
+            self.delete_babylon_client_secret(platform_id)
+        if resource == "storage":
+            self.delete_storage_client_secret(platform_id)
 
     def delete_config(self, schema: str):
         client = hvac.Client(url=self.server_id, token=self.token)
-        client.secrets.kv.v2.delete_metadata_and_all_versions(
-            path=schema,
-            mount_point=self.org_name,
+        if self.version_engine == "v1":
+            print(f"deleting {self.org_name}/{schema}")
+            client.delete(path=f"{self.org_name}/{schema}")
+        else:
+            client.secrets.kv.v2.delete_metadata_and_all_versions(
+                path=schema,
+                mount_point=self.org_name,
+            )
+        return self
+
+    def delete_babylon_client_secret(self, platform_id: str):
+        self.delete_config(f"{self.org_tenant}/babylon/{platform_id}/client")
+        return self
+
+    def delete_storage_client_secret(self, platform_id: str):
+        self.platform_prefix = f"{self.org_tenant}/platform/{platform_id}"
+        self.delete_config(
+            f"{self.platform_prefix}/storage/account",
         )
-        return self
-
-    def delete_babylon_client_secret(self):
-        self.delete_config(f"{self.prefix_client}/client")
-        return self
-
-    def delete_storage_client_secret(self):
-        self.delete_config(f"{self.prefix_platform}/{self.platform_name}/storage/account", )
         return self
 
     def delete_acr(self, platform_id):
@@ -147,4 +143,6 @@ The ressource should be
         self.delete_plaftorm(platform_id)
         self.delete_powerbi(platform_id)
         self.delete_webapp(platform_id)
+        self.delete_babylon_client_secret(platform_id)
+        self.delete_storage_client_secret(platform_id)
         return self

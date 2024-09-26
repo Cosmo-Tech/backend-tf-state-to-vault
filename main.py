@@ -11,7 +11,6 @@ from vault.policies.add_policies import AddPolicies
 from vault.policies.delete_policies import DeletePolicies
 from vault.policies.update_policies import UpdatePolicies
 from vault.backup_import.backupconfig import Backup
-from vault.backup_import.importconfig import ImportConfig
 from vault.config.delete_config import DeleteConfig
 from vault.config.read_config import ReadConfig
 from vault.config.write_config import WriteConfig
@@ -55,14 +54,37 @@ def main():
         action="store_true",
         help="Use Azure Blob Storage instead of Vault",
     )
+    parser_read.add_argument(
+        "--engine",
+        help="Specify the version of engine, default: v2",
+        choices=["v1", "v2"],
+    )
+
     # 'write' subcommand under 'config'
     parser_write = config_subparsers.add_parser("write", help="Write configuration")
+    parser_write.add_argument(
+        "--resource", help='Specify the resource to read, or "all" for all resources'
+    )
+    parser_write.add_argument(
+        "--engine",
+        help="Specify the version of engine, default: v2",
+        choices=["v1", "v2"],
+    )
+    parser_write.add_argument(
+        "--platform-id", required=True, help="Platform ID to delete config"
+    )
     parser_write.add_argument("--file", help="Path to local state file (optional)")
     parser_write.add_argument(
         "--use-azure",
         action="store_true",
         help="Use Azure Blob Storage instead of Vault",
     )
+    parser_write.add_argument(
+        "--from-tfstate",
+        action="store_true",
+        help="Use terraform state file as data source",
+    )
+
     # 'delete' subcommand under 'config'
     parser_delete = config_subparsers.add_parser(
         "delete", help="delete a new configuration"
@@ -77,7 +99,12 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
 """,
     )
     parser_delete.add_argument(
-        "--platform_id", required=True, help="Platform ID to delete config"
+        "--engine",
+        help="Specify the version of engine, default: v2",
+        choices=["v1", "v2"],
+    )
+    parser_delete.add_argument(
+        "--platform-id", required=True, help="Platform ID to delete config"
     )
 
     # 'destroy' subcommand under 'config'
@@ -94,7 +121,7 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
 """,
     )
     parser_destroy.add_argument(
-        "--platform_id", required=True, help="Platform ID to delete config"
+        "--platform-id", required=True, help="Platform ID to delete config"
     )
 
     # Create the 'tenant' subcommand parser
@@ -106,11 +133,20 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
         help="Describe of operation to perform",
     )
 
-    tenant_subparsers.add_parser(
-        "enable", help="Enable a new tenant"
+    enable_parser = tenant_subparsers.add_parser("enable", help="Enable a new tenant")
+    enable_parser.add_argument(
+        "--name", required=True, help="Secret engine name / mount"
     )
-    tenant_subparsers.add_parser(
+    enable_parser.add_argument(
+        "--engine",
+        help="Specify the version of engine, default: v2",
+        choices=["v1", "v2"],
+    )
+    disable_parser = tenant_subparsers.add_parser(
         "disable", help="Disable an existing tenant"
+    )
+    disable_parser.add_argument(
+        "--name", required=True, help="Secret engine name / mount"
     )
 
     # Add the 'User' subcommand parserimport pathlib
@@ -161,9 +197,7 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
         required=True,
         help="Path to the Json file containing secrets platform",
     )
-    secret_subparsers.add_parser(
-        "delete", help="Delete an existing secret"
-    )
+    secret_subparsers.add_parser("delete", help="Delete an existing secret")
 
     # Add the 'policies' subcommand parser
     parser_policies = subparsers.add_parser(
@@ -219,22 +253,22 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
 
     # 'backup' subcommand under 'data'
     # parser_backup = data_subparsers.add_parser("backup", help="Backup data config")
-    # 'import' subcommand under 'data'
-    parser_import = data_subparsers.add_parser("import", help="Import data config")
-    parser_import.add_argument(
-        "--platform-id-to", required=True, help="Platform ID to import the secrets into"
+    parser_backup = data_subparsers.add_parser(
+        name="backup",
+        help="save config data in a local file named backup.<platform-id>.json",
     )
-    parser_import.add_argument(
-        "--backup-file", required=True, help="Path to the backup file to import"
+    parser_backup.add_argument(
+        "--engine",
+        help="Specify the version of engine, default: v2",
+        choices=["v1", "v2"],
+    )
+    parser_backup.add_argument(
+        "--platform-id", required=True, help="Platform ID containing all secrets"
     )
 
     # Parse the arguments
     args = parser.parse_args()
-    # write = WriteConfig()
-    read = ReadConfig()
-    delete = DeleteConfig()
-    # destroy = DestroyConfig()
-    enable = EnableNewTenant()
+
     disable = DisableTenant()
     useradd = UserAdd()
     userdelete = UserDelete()
@@ -243,16 +277,24 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
     addpolicies = AddPolicies()
     deletepolicies = DeletePolicies()
     updatepolicies = UpdatePolicies()
-    backup = Backup()
-    importconf = ImportConfig()
 
     # Handling the commands
     if args.command == "config":
         if args.operation == "write":
             try:
-                write = WriteConfig(local_file=args.file, use_azure=args.use_azure)
+                write = WriteConfig(
+                    version_engine=args.engine,
+                    local_file=args.file,
+                    use_azure=args.use_azure,
+                    from_tfstate=args.from_tfstate,
+                )
                 print("Writing configuration for all resources.")
-                write.write_all_config()
+                if args.resource == "all":
+                    write.write_all_config(platform_id=args.platform_id)
+                else:
+                    write.write_config(
+                        resource=args.resource, platform_id=args.platform_id
+                    )
                 print("Configuration written successfully.")
             except Exception as e:
                 print(f"An error occurred while writing the configuration: {str(e)}")
@@ -267,7 +309,11 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                     logger.info(
                         f"Initializing ReadConfig with file={args.file}, use_azure={args.use_azure}"
                     )
-                    read = ReadConfig(local_file=args.file, use_azure=args.use_azure)
+                    read = ReadConfig(
+                        local_file=args.file,
+                        use_azure=args.use_azure,
+                        version_engine=args.engine,
+                    )
                     if args.resource == "all":
                         logger.info("Reading configuration for all resources.")
                         config = read.read_all_config()
@@ -289,6 +335,7 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                         exc_info=True,
                     )
         elif args.operation == "delete":
+            delete = DeleteConfig(version_engine=args.engine)
             if args.resource == "all":
                 if args.platform_id:
                     print("Deleting configuration for all resources.")
@@ -305,21 +352,6 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                         "Error: --platform_id is required when deleting a specific resource."
                     )
                     parser_delete.print_help()
-        # elif args.operation == 'destroy':
-        #     if args.resource == 'all':
-        #         if args.platform_id:
-        #             print(f"Deleting configuration for all resources.")
-        #             destroy.destroy_all_config(args.platform_id)
-        #         else:
-        #             print("Error: --platform_id is required when --resource is 'all'.")
-        #             parser_destroy.print_help()
-        #     else:
-        #         if args.platform_id:
-        #             print(f"Deleting configuration for resource: {args.resource}")
-        #             delete.delete_get_config(args.resource, args.platform_id)
-        #         else:
-        #             print("Error: --platform_id is required when deleting a specific resource.")
-        #             parser_destroy.print_help()
         elif args.operation == "read":
             if args.resource == "all":
                 print("Reading configuration for all resources.")
@@ -327,12 +359,13 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
         else:
             parser_config.print_help()
     elif args.command == "tenant":
+        enable = EnableNewTenant(version_engine=args.engine)
         if args.operation == "enable":
             print("Enabling a new secret engine.")
-            enable.enable()
+            enable.enable(secret_engine=args.name)
         elif args.operation == "disable":
             print("Disabling a secret engine.")
-            disable.disable()
+            disable.disable(secret_engine=args.name)
         else:
             parser_tenant.print_help()
     elif args.command == "user":
@@ -396,18 +429,10 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
         else:
             parser_policies.print_help()
     elif args.command == "data":
+        backup = Backup(version_engine=args.engine)
         if args.operation == "backup":
             print("Backing up data config.")
-            backup.backup_config()
-        elif args.operation == "import":
-            print("Importing data config.")
-            if not args.backup_file and not args.platform_id_to:
-                print(
-                    "Error: --backup-file and platform_id_to arguments are required for import operation."
-                )
-                parser_import.print_help()
-            else:
-                importconf.import_config(args.platform_id_to, args.backup_file)
+            backup.backup_config(platform_id=args.platform_id)
         else:
             parser_data.print_help()
     else:

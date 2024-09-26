@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import json
 import logging
@@ -11,29 +10,34 @@ logger = logging.getLogger("Babylon")
 
 class WriteConfig:
 
-    def __init__(self, hvac_client, local_file=None, use_azure=False):
+    def __init__(
+        self,
+        version_engine: str = "v2",
+        local_file=None,
+        use_azure=False,
+        from_tfstate: bool = False,
+    ):
         for v in [
-                "VAULT_ADDR",
-                "VAULT_TOKEN",
-                "ORGANIZATION_NAME",
-                "TENANT_ID",
-                "CLUSTER_NAME",
-                "PLATFORM_NAME",
-                "STORAGE_ACCOUNT_NAME",
-                "STORAGE_ACCOUNT_KEY",
-                "STORAGE_CONTAINER",
-                "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR",
+            "VAULT_TOKEN",
+            "TENANT_ID",
+            "ORGANIZATION_NAME",
+            "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY",
+            "STORAGE_CONTAINER",
+            "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
                 sys.exit(1)
 
+        self.version_engine = version_engine
+        self.from_tfstate = from_tfstate
         self.server_id = os.environ.get("VAULT_ADDR")
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
         self.cluster_name = os.environ.get("CLUSTER_NAME")
-        self.platform_name = os.environ.get("PLATFORM_NAME")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
@@ -43,26 +47,24 @@ class WriteConfig:
         self.use_azure = use_azure and not local_file
         self.vault_client = hvac.Client(url=self.server_id, token=self.token)
         self.blob_client = None
-
-        self.data = {"outputs": {}}
         self.secrets = None
 
         if self.use_azure:
             self._init_blob_client()
-            self._read_or_create_azure_state()
-        elif self.local_file:
+        if self.local_file:
             self._read_or_create_local_state()
         else:
             self._read_or_create_azure_state()
 
-        tenant = f"{self.tenant_id}"
-        self.prefix = f"{tenant}/babylon/config/{self.platform_name}"
-        self.prefix_client = f"{tenant}/babylon/{self.platform_name}"
-        self.prefix_platform = f"{tenant}/platform"
+        self.prefix = f"{self.tenant_id}/babylon/config"
+        self.prefix_client = f"{self.tenant_id}/babylon"
+        self.prefix_platform = f"{self.tenant_id}/platform"
 
     def _init_blob_client(self):
         try:
-            account_key = (f"AccountKey={self.storage_secret};EndpointSuffix=core.windows.net")
+            account_key = (
+                f"AccountKey={self.storage_secret};EndpointSuffix=core.windows.net"
+            )
             conn_str = f"DefaultEndpointsProtocol=https;AccountName={self.storage_name};{account_key}"
             self.blob_client = BlobServiceClient.from_connection_string(conn_str)
         except Exception as e:
@@ -74,7 +76,9 @@ class WriteConfig:
                 with open(self.local_file, "r") as f:
                     self.data = json.load(f)
             except json.JSONDecodeError:
-                logger.warning(f"Invalid JSON in {self.local_file}. Creating new state.")
+                logger.warning(
+                    f"Invalid JSON in {self.local_file}. Creating new state."
+                )
                 self.data = {"outputs": {}}
         else:
             logger.info(f"File {self.local_file} not found. Creating new state.")
@@ -83,26 +87,27 @@ class WriteConfig:
     def _read_or_create_azure_state(self):
         try:
             if self.blob_client:
-                container_client = self.blob_client.get_container_client(self.storage_container)
+                container_client = self.blob_client.get_container_client(
+                    self.storage_container
+                )
                 blob_client = container_client.get_blob_client(self.tfstate_blob_name)
-
                 try:
                     self.state = blob_client.download_blob().readall()
                     self.data = json.loads(self.state)
                 except Exception as e:
-                    logger.info(f"Blob not found or invalid. Creating new state. Error: {str(e)}")
+                    logger.info(
+                        f"Blob not found or invalid. Creating new state. Error: {str(e)}"
+                    )
                     self.data = {"outputs": {}}
         except Exception as e:
             logger.error(f"Failed to access Azure Blob: {str(e)}")
             # self.data = {"outputs": {}}
 
     def upload_config(self, schema: str, data: dict):
-        if self.local_file:
-            simplified_key = schema.split("/")[-1]
-            if self.local_file:
-                self._write_to_local(simplified_key, data)
-        if self.use_azure:
-            self._write_to_vault(schema, data)
+        schema_ = schema
+        if self.version_engine == "v1":
+            schema_ = f"{self.org_name}/{schema}"
+        self._write_to_vault(schema=schema_, data=data)
 
     def _write_to_local(self, key: str, data: dict):
         try:
@@ -116,7 +121,9 @@ class WriteConfig:
     def _write_to_azure(self, key: str, data: dict):
         try:
             self.data.setdefault("outputs", {})[key] = {"value": data}
-            container_client = self.blob_client.get_container_client(self.storage_container)
+            container_client = self.blob_client.get_container_client(
+                self.storage_container
+            )
             blob_client = container_client.get_blob_client(self.tfstate_blob_name)
             blob_client.upload_blob(json.dumps(self.data), overwrite=True)
             logger.info(f"Successfully wrote {key} to Azure Blob")
@@ -125,72 +132,86 @@ class WriteConfig:
 
     def _write_to_vault(self, schema: str, data: dict):
         try:
-            self.vault_client.secrets.kv.v2.create_or_update_secret(path=schema, secret=data, mount_point=self.org_name)
+            if self.version_engine == "v1":
+                self.vault_client.write(path=schema, **data)
+            else:
+                self.vault_client.secrets.kv.v2.create_or_update_secret(
+                    path=schema, secret=data, mount_point=self.org_name
+                )
             print(f"Successfully wrote {schema} to Vault")
         except Exception as e:
             logger.error(f"Failed to write to Vault: {str(e)}")
 
-    def set_babylon_client_secret(self):
-        acr_login_server = ("" if "out_babylon_client_secret" not in self.data["outputs"] else
-                            self.data["outputs"]["out_babylon_client_secret"]["value"])
-        client_secret = dict(secret=acr_login_server)
-        self.upload_config(f"{self.prefix_client}/client", client_secret)
+    def set_babylon_client_secret(self, platform_id: str):
+        data = self.data
+        babylon_secret = (
+            ""
+            if "out_babylon_sp_client_secret" not in data["outputs"]
+            else data["outputs"]["out_babylon_sp_client_secret"]["value"]
+        )
+        client_secret = dict(secret=babylon_secret)
+        self.upload_config(f"{self.prefix_client}/{platform_id}/client", client_secret)
         return self
 
-    def set_storage_client_secret(self):
-        storage_acc_secret = ("" if "out_storage_account_secret" not in self.data["outputs"] else
-                              self.data["outputs"]["out_storage_account_secret"]["value"])
+    def set_storage_client_secret(self, platform_id: str):
+        data = self.data
+        storage_acc_secret = (
+            ""
+            if "out_azure_storage_account_key" not in data["outputs"]
+            else data["outputs"]["out_azure_storage_account_key"]["value"]
+        )
         client_secret = dict(secret=storage_acc_secret)
         self.upload_config(
-            f"{self.prefix_platform}/{self.platform_name}/storage/account",
-            client_secret,
+            f"{self.prefix_platform}/{platform_id}/storage/account", client_secret
         )
         return self
 
-    def write_acr(self):
-        acr_login_server = ("" if "out_acr_login_server" not in self.data["outputs"] else
-                            self.data["outputs"]["out_acr_login_server"]["value"])
+    def write_acr(self, platform_id):
+        data = self.data
+        acr_login_server = (
+            ""
+            if "out_acr_login_server" not in data["outputs"]
+            else data["outputs"]["out_acr_login_server"]["value"]
+        )
         acr = {
             "login_server": acr_login_server,
             "simulator_repository": "",
             "simulator_version": "",
         }
-        self.upload_config(f"{self.prefix}/acr", acr)
+        self.upload_config(f"{self.prefix}/{platform_id}/acr", acr)
         return self
 
-    def write_adt(self):
+    def write_adt(self, platform_id):
         adt = {
             "built_owner_id": "bcd981a7-7f74-457b-83e1-cceb9e632ffe",
             "built_reader_id": "d57506d4-4c8d-48b1-8587-93c323f6a5a3",
             "digital_twin_url": "",
         }
-        self.upload_config(f"{self.prefix}/adt", adt)
+        self.upload_config(f"{self.prefix}/{platform_id}/adt", adt)
         return self
 
-    def write_app(self):
+    def write_app(self, platform_id):
         app = {"app_id": "", "name": "", "object_id": "", "principal_id": ""}
-        self.upload_config(f"{self.prefix}/app", app)
+        self.upload_config(f"{self.prefix}/{platform_id}/app", app)
         return self
 
-    def write_adx(self):
-        adx_uri = ("" if "out_adx_uri" not in self.data["outputs"] else self.data["outputs"]["out_adx_uri"]["value"])
-        ckrgx = re.compile("^https:\\/\\/([a-zA-Z|-].+)\\..+\\.kusto\\..+$")
-        match_content = ckrgx.match(adx_uri)
-        if not match_content:
-            adx = {
-                "built_contributor_id": "b24988ac-6180-42a0-ab88-20f7382dd24c",
-                "built_owner_id": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
-                "cluster_name": "",
-                "cluster_principal_id": "",
-                "cluster_uri": "",
-                "database_name": "",
-            }
-            self.upload_config(f"{self.prefix}/adx", adx)
-            return self
-        cluster_name = match_content.groups()
-        cluster_name = cluster_name[0] if len(cluster_name) else ""
-        cluster_principal_id = ("" if "out_cluster_adx_principal_id" not in self.data["outputs"] else
-                                self.data["outputs"]["out_cluster_adx_principal_id"]["value"])
+    def write_adx(self, platform_id):
+        data = self.data
+        cluster_name = (
+            ""
+            if "out_adx_cluster_name" not in data["outputs"]
+            else data["outputs"]["out_adx_cluster_name"]["value"]
+        )
+        adx_uri = (
+            ""
+            if "out_adx_cluster_uri" not in data["outputs"]
+            else data["outputs"]["out_adx_cluster_uri"]["value"]
+        )
+        cluster_principal_id = (
+            ""
+            if "out_adx_cluster_principal_id" not in data["outputs"]
+            else data["outputs"]["out_adx_cluster_principal_id"]["value"]
+        )
         adx = {
             "built_contributor_id": "b24988ac-6180-42a0-ab88-20f7382dd24c",
             "built_owner_id": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
@@ -199,14 +220,21 @@ class WriteConfig:
             "cluster_uri": adx_uri,
             "database_name": "",
         }
-        self.upload_config(f"{self.prefix}/adx", adx)
+        self.upload_config(f"{self.prefix}/{platform_id}/adx", adx)
         return self
 
-    def write_api(self):
-        scope = ("" if "out_cosmo_api_scope" not in self.data["outputs"] else
-                 f"{self.data['outputs']['out_cosmo_api_scope']['value']}")
-        url = ("" if "out_cosmo_api_url" not in self.data["outputs"] else
-               f"{self.data['outputs']['out_cosmo_api_url']['value']}")
+    def write_api(self, platform_id):
+        data = self.data
+        scope = (
+            ""
+            if "out_api_cosmo_scope" not in data["outputs"]
+            else f"{data['outputs']['out_api_cosmo_scope']['value']}"
+        )
+        url = (
+            ""
+            if "out_api_cosmo_url" not in data["outputs"]
+            else f"{data['outputs']['out_api_cosmo_url']['value']}"
+        )
         api = {
             "connector.adt_id": "",
             "connector.adt_version": "",
@@ -228,18 +256,31 @@ class WriteConfig:
             "workspace_id": "",
             "workspace_key": "",
         }
-        self.upload_config(f"{self.prefix}/api", api)
+        self.upload_config(f"{self.prefix}/{platform_id}/api", api)
         return self
 
-    def write_azure(self):
-        resource_group_name = ("" if "out_tenant_resource_group" not in self.data["outputs"] else
-                               self.data["outputs"]["out_tenant_resource_group"]["value"])
-        resource_location = ("" if "out_location" not in self.data["outputs"] else
-                             self.data["outputs"]["out_location"]["value"])
-        storage_account_name = ("" if "out_storage_account_name" not in self.data["outputs"] else
-                                self.data["outputs"]["out_storage_account_name"]["value"])
-        subscription_id = ("" if "out_subscription_id" not in self.data["outputs"] else
-                           self.data["outputs"]["out_subscription_id"]["value"])
+    def write_azure(self, platform_id):
+        data = self.data
+        resource_group_name = (
+            ""
+            if "out_azure_tenant_resource_group" not in data["outputs"]
+            else data["outputs"]["out_azure_tenant_resource_group"]["value"]
+        )
+        resource_location = (
+            ""
+            if "out_azure_resource_location" not in data["outputs"]
+            else data["outputs"]["out_azure_resource_location"]["value"]
+        )
+        storage_account_name = (
+            ""
+            if "out_azure_storage_account_name" not in data["outputs"]
+            else data["outputs"]["out_azure_storage_account_name"]["value"]
+        )
+        subscription_id = (
+            ""
+            if "out_azure_subscription_id" not in data["outputs"]
+            else data["outputs"]["out_azure_subscription_id"]["value"]
+        )
         azure = {
             "cli_client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
             "email": "",
@@ -255,19 +296,26 @@ class WriteConfig:
             "team_id": "",
             "user_principal_id": "",
         }
-        self.upload_config(f"{self.prefix}/azure", azure)
+        self.upload_config(f"{self.prefix}/{platform_id}/azure", azure)
         return self
 
-    def write_babylon(self):
-        babylon_client_id = ("" if "out_babylon_sp_client_id" not in self.data["outputs"] else
-                             self.data["outputs"]["out_babylon_sp_client_id"]["value"])
-        babylon_principal_id = ("" if "out_babylon_sp_object_id" not in self.data["outputs"] else
-                                self.data["outputs"]["out_babylon_sp_object_id"]["value"])
+    def write_babylon(self, platform_id):
+        data = self.data
+        babylon_client_id = (
+            ""
+            if "out_tenant_sp_client_id" not in data["outputs"]
+            else data["outputs"]["out_tenant_sp_client_id"]["value"]
+        )
+        babylon_principal_id = (
+            ""
+            if "out_tenant_sp_object_id" not in data["outputs"]
+            else data["outputs"]["out_tenant_sp_object_id"]["value"]
+        )
         babylon = {"client_id": babylon_client_id, "principal_id": babylon_principal_id}
-        self.upload_config(f"{self.prefix}/babylon", babylon)
+        self.upload_config(f"{self.prefix}/{platform_id}/babylon", babylon)
         return self
 
-    def write_github(self):
+    def write_github(self, platform_id):
         github = {
             "branch": "",
             "organization": "",
@@ -275,23 +323,30 @@ class WriteConfig:
             "run_url": "",
             "workflow_path": "",
         }
-        self.upload_config(f"{self.prefix}/github", github)
+        self.upload_config(f"{self.prefix}/{platform_id}/github", github)
         return self
 
-    def write_plaftorm(self):
-        platform_sp_client_id = ("" if "out_tenant_sp_client_id" not in self.data["outputs"] else
-                                 self.data["outputs"]["out_tenant_sp_client_id"]["value"])
-        platform_sp_object_id = ("" if "out_tenant_sp_object_id" not in self.data["outputs"] else
-                                 self.data["outputs"]["out_tenant_sp_object_id"]["value"])
+    def write_plaftorm(self, platform_id):
+        data = self.data
+        platform_sp_client_id = (
+            ""
+            if "out_tenant_sp_client_id" not in data["outputs"]
+            else data["outputs"]["out_tenant_sp_client_id"]["value"]
+        )
+        platform_sp_object_id = (
+            ""
+            if "out_tenant_sp_object_id" not in data["outputs"]
+            else data["outputs"]["out_tenant_sp_object_id"]["value"]
+        )
         platform = {
             "app_id": platform_sp_client_id,
             "principal_id": platform_sp_object_id,
             "scope_id": "6332363e-bcba-4c4a-a605-c25f23117400",
         }
-        self.upload_config(f"{self.prefix}/platform", platform)
+        self.upload_config(f"{self.prefix}/{platform_id}/platform", platform)
         return self
 
-    def write_powerbi(self):
+    def write_powerbi(self, platform_id):
         powerbi = {
             "scope": "https://analysis.windows.net/powerbi/api/.default",
             "dashboard_view": "",
@@ -300,10 +355,10 @@ class WriteConfig:
             "workspace.id": "",
             "workspace.name": "",
         }
-        self.upload_config(f"{self.prefix}/powerbi", powerbi)
+        self.upload_config(f"{self.prefix}/{platform_id}/powerbi", powerbi)
         return self
 
-    def write_webapp(self):
+    def write_webapp(self, platform_id):
         webapp = {
             "deployment_name": "",
             "enable_insights": False,
@@ -312,21 +367,45 @@ class WriteConfig:
             "location": "",
             "static_domain": "",
         }
-        self.upload_config(f"{self.prefix}/webapp", webapp)
+        self.upload_config(f"{self.prefix}/{platform_id}/webapp", webapp)
         return self
 
-    def write_all_config(self):
-        self.write_acr()
-        self.write_adt()
-        self.write_app()
-        self.write_adx()
-        self.write_api()
-        self.write_azure()
-        self.write_babylon()
-        self.write_github()
-        self.write_plaftorm()
-        self.write_powerbi()
-        self.write_webapp()
-        self.set_storage_client_secret()
-        self.set_babylon_client_secret()
+    def write_all_config(self, platform_id: str):
+        self.write_acr(platform_id=platform_id)
+        self.write_adt(platform_id=platform_id)
+        self.write_app(platform_id=platform_id)
+        self.write_adx(platform_id=platform_id)
+        self.write_api(platform_id=platform_id)
+        self.write_azure(platform_id=platform_id)
+        self.write_babylon(platform_id=platform_id)
+        self.write_github(platform_id=platform_id)
+        self.write_plaftorm(platform_id=platform_id)
+        self.write_powerbi(platform_id=platform_id)
+        self.write_webapp(platform_id=platform_id)
+        self.set_storage_client_secret(platform_id=platform_id)
+        self.set_babylon_client_secret(platform_id=platform_id)
         return self
+
+    def write_config(self, resource: str, platform_id: str):
+        if resource == "acr":
+            self.write_acr(platform_id=platform_id)
+        if resource == "adt":
+            self.write_adt(platform_id=platform_id)
+        if resource == "adx":
+            self.write_adx(platform_id=platform_id)
+        if resource == "app":
+            self.write_app(platform_id=platform_id)
+        if resource == "api":
+            self.write_api(platform_id=platform_id)
+        if resource == "azure":
+            self.write_azure(platform_id=platform_id)
+        if resource == "babylon":
+            self.write_babylon(platform_id=platform_id)
+        if resource == "github":
+            self.write_github(platform_id=platform_id)
+        if resource == "platform":
+            self.write_plaftorm(platform_id=platform_id)
+        if resource == "powerbi":
+            self.write_powerbi(platform_id=platform_id)
+        if resource == "webapp":
+            self.write_webapp(platform_id=platform_id)
