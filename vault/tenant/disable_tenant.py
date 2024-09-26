@@ -10,16 +10,16 @@ class DisableTenant:
 
     def __init__(self):
         for v in [
-                "VAULT_ADDR",
-                "VAULT_TOKEN",
-                "ORGANIZATION_NAME",
-                "TENANT_ID",
-                "CLUSTER_NAME",
-                "PLATFORM_NAME",
-                "STORAGE_ACCOUNT_NAME",
-                "STORAGE_ACCOUNT_KEY",
-                "STORAGE_CONTAINER",
-                "TFSTATE_BLOB_NAME",
+            "VAULT_ADDR",
+            "VAULT_TOKEN",
+            "ORGANIZATION_NAME",
+            "TENANT_ID",
+            "CLUSTER_NAME",
+            "PLATFORM_NAME",
+            "STORAGE_ACCOUNT_NAME",
+            "STORAGE_ACCOUNT_KEY",
+            "STORAGE_CONTAINER",
+            "TFSTATE_BLOB_NAME",
         ]:
             if v not in os.environ:
                 logger.error(f" {v} is missing")
@@ -47,4 +47,6 @@ class DisableTenant:
         client.sys.disable_secrets_engine(path="organization")
         print('Secrets engine at path "organization" has been disabled.')
         client.sys.disable_auth_method(path=f"userpass-{self.org_name}")
-        print(f'Authentication method at path "userpass-{self.org_name}" has been disabled.')
+        print(
+            f'Authentication method at path "userpass-{self.org_name}" has been disabled.'
+        )
