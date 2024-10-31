@@ -17,8 +17,7 @@ class AddSecrets:
                 "VAULT_TOKEN",
                 "ORGANIZATION_NAME",
                 "TENANT_ID",
-                "CLUSTER_NAME",
-                "PLATFORM_NAME",
+                "PLATFORM_ID",
                 "STORAGE_ACCOUNT_NAME",
                 "STORAGE_ACCOUNT_KEY",
                 "STORAGE_CONTAINER",
@@ -32,8 +31,7 @@ class AddSecrets:
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
-        self.cluster_name = os.environ.get("CLUSTER_NAME")
-        self.platform_name = os.environ.get("PLATFORM_NAME")
+        self.platform_name = os.environ.get("PLATFORM_ID")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
@@ -54,7 +52,7 @@ class AddSecrets:
             sys.exit(1)
 
         tenant = f"{self.tenant_id}"
-        self.prefix_secrets = f"{tenant}/clusters/{self.cluster_name}"
+        self.prefix_secrets = f"{tenant}/{self.platform_name}"
 
     def dowload_ftstate(self):
         prefix = "DefaultEndpointsProtocol=https;"
@@ -70,11 +68,6 @@ class AddSecrets:
         except Exception:
             self.state = "{}"
             logger.info("blob not found")
-
-    # def upload_config(self, schema: str, data: dict):
-    #     client = Client(url=self.server_id, token=self.token)
-    #     client.write(schema, **data)
-    #     return self
 
     def upload_secrets(self, schema: str, data: dict):
         client = hvac.Client(url=self.server_id, token=self.token)

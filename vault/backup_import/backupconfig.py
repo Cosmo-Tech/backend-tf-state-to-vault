@@ -15,7 +15,6 @@ class Backup:
                 "VAULT_TOKEN",
                 "ORGANIZATION_NAME",
                 "TENANT_ID",
-                "CLUSTER_NAME",
                 "STORAGE_ACCOUNT_NAME",
                 "STORAGE_ACCOUNT_KEY",
                 "STORAGE_CONTAINER",
@@ -30,7 +29,6 @@ class Backup:
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
-        self.cluster_name = os.environ.get("CLUSTER_NAME")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
@@ -90,22 +88,3 @@ class Backup:
         with open(output_file, 'w') as f:
             json.dump(config, f, indent=2)
         logger.info(f"Configuration backed up to {output_file}")
-
-    # def save_backup_to_blob(self):
-    #     _file = pathlib.Path(f"backup-{self.platform_name}.json")
-    #     prefix = "DefaultEndpointsProtocol=https;"
-    #     prefix += f"AccountName={self.storage_name}"
-    #     conn_str = f"{prefix};AccountKey={self.storage_secret};"
-    #     conn_str += "EndpointSuffix=core.windows.net"
-    #     self.blob_client = BlobServiceClient.from_connection_string(conn_str)
-    #     try:
-    #         service = self.blob_client.get_container_client(
-    #             container=self.storage_container
-    #         )
-    #         blob = service.get_blob_client(blob=self.tfstate_blob_name)
-    #         with open(_file, 'rb') as data:
-    #             blob.upload_blob(data, overwrite=True)
-    #         logger.info(f"Backup file uploaded to {self.tfstate_blob_name}")
-    #     except Exception as e:
-    #         logger.error(f"Error uploading backup file: {e}")
-    #         sys.exit(1)

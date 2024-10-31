@@ -37,7 +37,6 @@ class WriteConfig:
         self.token = os.environ.get("VAULT_TOKEN")
         self.org_name = os.environ.get("ORGANIZATION_NAME")
         self.tenant_id = os.environ.get("TENANT_ID")
-        self.cluster_name = os.environ.get("CLUSTER_NAME")
         self.storage_name = os.environ.get("STORAGE_ACCOUNT_NAME")
         self.storage_secret = os.environ.get("STORAGE_ACCOUNT_KEY")
         self.storage_container = os.environ.get("STORAGE_CONTAINER")
