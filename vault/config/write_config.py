@@ -152,6 +152,17 @@ class WriteConfig:
         self.upload_config(f"{self.prefix_client}/{platform_id}/client", client_secret)
         return self
 
+    def set_restish_client_secret(self, platform_id: str):
+        data = self.data
+        restish_secret = (
+            ""
+            if "out_restish_sp_client_secret" not in data["outputs"]
+            else data["outputs"]["out_restish_sp_client_secret"]["value"]
+        )
+        client_secret = dict(secret=restish_secret)
+        self.upload_config(f"{self.prefix_client}/{platform_id}/restish", client_secret)
+        return self
+
     def set_storage_client_secret(self, platform_id: str):
         data = self.data
         storage_acc_secret = (
@@ -381,6 +392,7 @@ class WriteConfig:
         self.write_plaftorm(platform_id=platform_id)
         self.write_powerbi(platform_id=platform_id)
         self.write_webapp(platform_id=platform_id)
+        self.set_restish_client_secret(platform_id=platform_id)
         self.set_storage_client_secret(platform_id=platform_id)
         self.set_babylon_client_secret(platform_id=platform_id)
         return self
@@ -408,3 +420,5 @@ class WriteConfig:
             self.write_powerbi(platform_id=platform_id)
         if resource == "webapp":
             self.write_webapp(platform_id=platform_id)
+        if resource == "restish":
+            self.set_restish_client_secret(platform_id=platform_id)
