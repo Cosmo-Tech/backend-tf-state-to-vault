@@ -278,13 +278,13 @@ class WriteConfig:
         )
         resource_location = (
             ""
-            if "out_location" not in data["outputs"]
-            else data["outputs"]["out_location"]["value"]
+            if "out_azure_resource_location" not in data["outputs"]
+            else data["outputs"]["out_azure_resource_location"]["value"]
         )
         storage_account_name = (
             ""
-            if "out_storage_account_name" not in data["outputs"]
-            else data["outputs"]["out_storage_account_name"]["value"]
+            if "out_azure_storage_account_name" not in data["outputs"]
+            else data["outputs"]["out_azure_storage_account_name"]["value"]
         )
         subscription_id = (
             ""
