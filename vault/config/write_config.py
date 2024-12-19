@@ -273,23 +273,23 @@ class WriteConfig:
         data = self.data
         resource_group_name = (
             ""
-            if "out_azure_tenant_resource_group" not in data["outputs"]
-            else data["outputs"]["out_azure_tenant_resource_group"]["value"]
+            if "out_tenant_resource_group" not in data["outputs"]
+            else data["outputs"]["out_tenant_resource_group"]["value"]
         )
         resource_location = (
             ""
-            if "out_azure_resource_location" not in data["outputs"]
-            else data["outputs"]["out_azure_resource_location"]["value"]
+            if "out_location" not in data["outputs"]
+            else data["outputs"]["out_location"]["value"]
         )
         storage_account_name = (
             ""
-            if "out_azure_storage_account_name" not in data["outputs"]
-            else data["outputs"]["out_azure_storage_account_name"]["value"]
+            if "out_storage_account_name" not in data["outputs"]
+            else data["outputs"]["out_storage_account_name"]["value"]
         )
         subscription_id = (
             ""
-            if "out_azure_subscription_id" not in data["outputs"]
-            else data["outputs"]["out_azure_subscription_id"]["value"]
+            if "out_subscription_id" not in data["outputs"]
+            else data["outputs"]["out_subscription_id"]["value"]
         )
         azure = {
             "cli_client_id": "04b07795-8ddb-461a-bbee-02f9e1bf7b46",
