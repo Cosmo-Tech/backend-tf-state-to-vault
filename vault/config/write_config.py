@@ -303,13 +303,13 @@ class WriteConfig:
         data = self.data
         babylon_client_id = (
             ""
-            if "out_tenant_sp_client_id" not in data["outputs"]
-            else data["outputs"]["out_tenant_sp_client_id"]["value"]
+            if "out_babylon_sp_client_id" not in data["outputs"]
+            else data["outputs"]["out_babylon_sp_client_id"]["value"]
         )
         babylon_principal_id = (
             ""
-            if "out_tenant_sp_object_id" not in data["outputs"]
-            else data["outputs"]["out_tenant_sp_object_id"]["value"]
+            if "out_babylon_sp_object_id" not in data["outputs"]
+            else data["outputs"]["out_babylon_sp_object_id"]["value"]
         )
         babylon = {"client_id": babylon_client_id, "principal_id": babylon_principal_id}
         self.upload_config(f"{self.prefix}/{platform_id}/babylon", babylon)
