@@ -59,6 +59,8 @@ class DeleteConfig:
             self.delete_powerbi(platform_id)
         if resource == "webapp":
             self.delete_webapp(platform_id)
+        if resource == "keycloak":
+            self.delete_keycloak(platform_id)
         if resource == "client":
             self.delete_babylon_client_secret(platform_id)
         if resource == "storage":
@@ -130,6 +132,10 @@ class DeleteConfig:
     def delete_webapp(self, platform_id):
         self.delete_config(f"{self.prefix}/{platform_id}/webapp")
         return self
+    
+    def delete_keycloak(self, platform_id):
+        self.delete_config(f"{self.prefix}/{platform_id}/keycloak")
+        return self
 
     def delete_all_config(self, platform_id):
         self.delete_acr(platform_id)
@@ -143,6 +149,7 @@ class DeleteConfig:
         self.delete_plaftorm(platform_id)
         self.delete_powerbi(platform_id)
         self.delete_webapp(platform_id)
+        self.delete_keycloak(platform_id)
         self.delete_babylon_client_secret(platform_id)
         self.delete_storage_client_secret(platform_id)
         return self

@@ -1,4 +1,74 @@
-### Configuring Initialization Variables in Babylon Vault
+# Configuring Initialization Variables in Babylon Vault 
+
+The first step is to retrieve the repot github :
+
+```bash
+git clone git@github.com:Cosmo-Tech/backend-tf-state-to-vault.git
+```
+In this repo, you will find two important folders: Keycloak and Vault.
+
+- The `Keycloak` folder contains a script that prepares a JSON file with all the information Babylon needs to connect to the API using Keycloak. This JSON file is then used as a basis to populate the entire Keycloak entry in Vault.
+
+- The `Vault` folder contains all the commands to handle the configuration, such as CRUD operations (create, read, update, delete), etc.
+
+## Installation
+
+Create a new Python virtual environment and install the dependencies from requirements.txt as follows:
+
+```bash
+python3 -m venv ~/backend-vault-env
+source ~/backend-vault-env/bin/activate
+pip install -r requirements.txt
+```
+## Usage
+
+You need to create a file that contains the required environment variables and expose them in your terminal.
+
+The recommended naming convention is:
+
+```bash
+.env.<platform_name>.<tenant_name>
+# Example:
+.env.warp.sphinx
+```
+Example of content for this file
+
+```bash
+# Vault configuration
+export VAULT_ADDR="https://warp.api.cosmotech.com"
+export VAULT_TOKEN="To fill"
+
+# Platfom information
+export TENANT_ID="xxxxxxx.xxxxx.xxxxxx.xxxxxxx"
+export ORGANIZATION_NAME="cosmotech"
+export PLATFORM_NAME=""
+export CLUSTER_NAME=""
+export PLATFORM_ID="sphinx"
+export TFSTATE_BLOB_NAME="warp-sphinx-infra-xxxx"
+export STORAGE_ACCOUNT_KEY="To fill"
+export STORAGE_ACCOUNT_NAME="platformkvasir"
+export STORAGE_CONTAINER="states-entries"
+
+# Keycloak Configuration
+export KEYCLOAK_URL="https://warp.api.cosmotech.com/keycloak"
+export REALM="sphinx"
+export CLIENT_NAME="cosmotech-api-client"
+export ADMIN_REALM="master"
+export SCOPE="openid"
+# Credentials Admin
+export KEYCLOAK_ADMIN="admin-cosmo"
+export KEYCLOAK_ADMIN_PASSWORD="To fill"
+```
+
+
+If that’s okay, you now need to run the script run-config.sh.
+This will run the Keycloak configuration and generate a JSON file at:
+```bash
+$HOME/keycloak_vault_config/client_credentials.json
+```
+After that, run the Vault configuration command to populate Vault.
+
+## Configuring Initialization Variables in Babylon Vault using docker images
 
 The first step is to retrieve the Docker image:
 

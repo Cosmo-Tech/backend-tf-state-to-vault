@@ -39,8 +39,8 @@ class ReadConfig:
         self.tfstate_blob_name = os.environ.get("TFSTATE_BLOB_NAME")
 
         self.prefix = f"{self.tenant_id}/babylon/config/{self.platform_id}"
-        self.prefix_client = f"{self.tenant_id}/babylon/{self.platform_id}"
-        self.prefix_platform = f"{self.tenant_id}/platform"
+        self.prefix_client = f"{self.org_name}/{self.tenant_id}/babylon/{self.platform_id}"
+        self.prefix_platform = f"{self.org_name}/{self.tenant_id}/platform"
 
         self.vault_prefix = f"{self.tenant_id}/babylon/config/{self.platform_id}"
 
@@ -83,11 +83,11 @@ class ReadConfig:
     def _init_vault(self):
         self.vault_client = hvac.Client(url=self.server_id, token=self.token)
 
-    def _read_config(self, resource: str):
+    def _read_config(self, resource: str, secret_engine: str):
         if self.use_azure:
             return self._read_from_azure(resource)
         else:
-            return self._read_from_vault(f"{self.vault_prefix}/{resource}")
+            return self._read_from_vault(f"{secret_engine}/{self.vault_prefix}/{resource}")
 
     def _read_from_azure(self, resource):
         try:
@@ -152,6 +152,8 @@ class ReadConfig:
             self._read_config(f"{self.prefix}/{resource}")
         if resource == "github":
             self._read_config(f"{self.prefix}/{resource}")
+        if resource == "keycloak":
+            self._read_config(f"{self.prefix}/{resource}")
         if resource == "platform":
             self._read_config(f"{self.prefix}/{resource}")
         if resource == "powerbi":
@@ -160,10 +162,10 @@ class ReadConfig:
             self._read_config(f"{self.prefix}/{resource}")
         if resource == "":
             logger.error(
-                """
-The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 
-'platform', 'powerbi', 'webapp', 'client', 'storage']
-"""
+               """
+                The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', 'github', 'keycloak'
+                'platform', 'powerbi', 'webapp', 'client', 'storage']
+               """
             )
             return None
 
@@ -208,7 +210,10 @@ The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', '
     def read_webapp(self, resource):
         return self._read_config(f"{self.prefix}/{resource}")
 
-    def read_all_config(self):
+    def read_keycloak(self, resource):
+        return self._read_config(f"{self.prefix}/{resource}")
+
+    def read_all_config(self, secret_engine):
         logger.info("Reading all config")
         resources = [
             "acr",
@@ -219,11 +224,12 @@ The resource should be ['acr', 'adt', 'adx', 'api', 'app', 'azure', 'babylon', '
             "azure",
             "babylon",
             "github",
+            "keycloak",
             "platform",
             "powerbi",
             "webapp",
         ]
-        data = {resource: self._read_config(resource) for resource in resources}
+        data = {resource: self._read_config(resource, secret_engine) for resource in resources}
         data["client"] = self.read_babylon_client_secret()
         data["storage"] = self.read_storage_client_secret()
         return data

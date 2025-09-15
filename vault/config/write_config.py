@@ -101,7 +101,6 @@ class WriteConfig:
                     self.data = {"outputs": {}}
         except Exception as e:
             logger.error(f"Failed to access Azure Blob: {str(e)}")
-            # self.data = {"outputs": {}}
 
     def upload_config(self, schema: str, data: dict):
         schema_ = schema
@@ -370,6 +369,38 @@ class WriteConfig:
         self.upload_config(f"{self.prefix}/{platform_id}/webapp", webapp)
         return self
 
+    def write_keycloak(self, platform_id):
+        data = self.data
+        url = (
+            ""
+            if "url" not in data
+            else data["url"]
+        )
+        grant_type = (
+            ""
+            if "grant_type" not in data
+            else data["grant_type"]
+        )
+        client_id = (
+            ""
+            if "client_id" not in data
+            else data["client_id"]
+        )
+        client_secret = (
+            ""
+            if "client_secret" not in data
+            else data["client_secret"]
+        )
+        scope = (
+            ""
+            if "scope" not in data
+            else data["scope"]
+        )
+        keycloak = {"url": url, "grant_type": grant_type, "client_id": client_id, 
+                    "client_secret": client_secret, "scope": scope}
+        self.upload_config(f"{self.prefix}/{platform_id}/keycloak", keycloak)
+        return self
+
     def write_all_config(self, platform_id: str):
         self.write_acr(platform_id=platform_id)
         self.write_adt(platform_id=platform_id)
@@ -409,3 +440,5 @@ class WriteConfig:
             self.write_powerbi(platform_id=platform_id)
         if resource == "webapp":
             self.write_webapp(platform_id=platform_id)
+        if resource == "keycloak":
+            self.write_keycloak(platform_id=platform_id)

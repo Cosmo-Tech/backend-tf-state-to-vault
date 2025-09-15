@@ -59,6 +59,10 @@ def main():
         help="Specify the version of engine, default: v2",
         choices=["v1", "v2"],
     )
+    parser_read.add_argument(
+        "--name",
+        help="Specify the secret engine root (e.g., cosmotech)"
+    )
 
     # 'write' subcommand under 'config'
     parser_write = config_subparsers.add_parser("write", help="Write configuration")
@@ -314,21 +318,24 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                         use_azure=args.use_azure,
                         version_engine=args.engine,
                     )
-                    if args.resource == "all":
-                        logger.info("Reading configuration for all resources.")
-                        config = read.read_all_config()
-                    else:
-                        logger.info(
-                            f"Reading configuration for resource: {args.resource}"
-                        )
-                        config = read.get_config(args.resource)
+                    if args.name is not None:
+                        if args.resource == "all":
+                            logger.info("Reading configuration for all resources.")
+                            config = read.read_all_config(secret_engine=args.name)
+                        else:
+                            logger.info(
+                                f"Reading configuration for resource: {args.resource}"
+                            )
+                            config = read.get_config(args.resource)
 
-                    if config:
-                        print(json.dumps(config, indent=2))
+                        if config:
+                            print(json.dumps(config, indent=2))
+                        else:
+                            logger.warning(
+                                f"No configuration found for resource: {args.resource}"
+                            )
                     else:
-                        logger.warning(
-                            f"No configuration found for resource: {args.resource}"
-                        )
+                        logger.error(f"Messing argement secret engine root {args.name}")
                 except Exception as e:
                     logger.error(
                         f"An error occurred while reading the configuration: {str(e)}",
@@ -352,10 +359,6 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                         "Error: --platform_id is required when deleting a specific resource."
                     )
                     parser_delete.print_help()
-        elif args.operation == "read":
-            if args.resource == "all":
-                print("Reading configuration for all resources.")
-                # read.read_all_config()
         else:
             parser_config.print_help()
     elif args.command == "tenant":
@@ -384,9 +387,6 @@ Accepted values: "acr", "adx ..", or "All" to delete configuration for all resou
                 print(
                     "Error: Missing required argument '--username' for deleting a user."
                 )
-                # parser_userdelete.print_help()
-        # else:
-        # parser_user.print_help()
     elif args.command == "secrets":
         if args.operation == "add":
             if args.secrets_path:
